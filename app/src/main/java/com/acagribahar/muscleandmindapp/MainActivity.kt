@@ -33,6 +33,8 @@ import com.acagribahar.muscleandmindapp.ui.screens.exercises.ExercisesViewModelF
 import com.acagribahar.muscleandmindapp.ui.screens.mindtasks.MindTaskDetailScreen
 import com.acagribahar.muscleandmindapp.ui.screens.mindtasks.MindTasksViewModel // ViewModel import
 import com.acagribahar.muscleandmindapp.ui.screens.mindtasks.MindTasksViewModelFactory // Factory import
+import com.acagribahar.muscleandmindapp.ui.screens.progress.ProgressViewModel // ViewModel import
+import com.acagribahar.muscleandmindapp.ui.screens.progress.ProgressViewModelFactory // Factory import
 
 
 class MainActivity : ComponentActivity() {
@@ -43,12 +45,16 @@ class MainActivity : ComponentActivity() {
     private lateinit var exercisesViewModel: ExercisesViewModel
     private lateinit var homeViewModel: HomeViewModel
     private lateinit var mindTasksViewModel: MindTasksViewModel
+    private lateinit var progressViewModel: ProgressViewModel
+
 
 
     //Factory'ler
     private lateinit var homeViewModelFactory: HomeViewModelFactory
     private lateinit var exercisesViewModelFactory: ExercisesViewModelFactory
-    private lateinit var mindTasksViewModelFactory: MindTasksViewModelFactory // Yeni Factory
+    private lateinit var mindTasksViewModelFactory: MindTasksViewModelFactory
+    private lateinit var progressViewModelFactory: ProgressViewModelFactory // Yeni Factory
+
 
 
 
@@ -58,6 +64,7 @@ class MainActivity : ComponentActivity() {
         // Repository, Factory ve ViewModel'ı burada başlat
         val database = AppDatabase.getDatabase(applicationContext)
         taskRepository = TaskRepositoryImpl(database.taskDao(), applicationContext)
+
         homeViewModelFactory = HomeViewModelFactory(taskRepository)
         homeViewModel = ViewModelProvider(this, homeViewModelFactory)[HomeViewModel::class.java]
 
@@ -68,6 +75,11 @@ class MainActivity : ComponentActivity() {
         // MindTasksViewModel için de aynı işlemi yap
         mindTasksViewModelFactory = MindTasksViewModelFactory(taskRepository)
         mindTasksViewModel = ViewModelProvider(this, mindTasksViewModelFactory)[MindTasksViewModel::class.java]
+
+        // ProgressViewModel için de aynı işlemi yap
+        progressViewModelFactory = ProgressViewModelFactory(taskRepository)
+        progressViewModel = ViewModelProvider(this, progressViewModelFactory)[ProgressViewModel::class.java]
+
 
 
         setContent {
@@ -128,7 +140,9 @@ class MainActivity : ComponentActivity() {
                             navController = navController, // Üst seviye controller (Logout için)
                             homeViewModel = homeViewModel,
                             exercisesViewModel = exercisesViewModel,
-                            mindTasksViewModel = mindTasksViewModel
+                            mindTasksViewModel = mindTasksViewModel,
+                            progressViewModel = progressViewModel
+
 
 
                         )
@@ -147,7 +161,9 @@ fun MainAppScreen(
     navController: NavHostController, // Üst seviye Controller (Settings'e gidecek)
     homeViewModel: HomeViewModel,
     exercisesViewModel: ExercisesViewModel,
-    mindTasksViewModel: MindTasksViewModel
+    mindTasksViewModel: MindTasksViewModel,
+    progressViewModel: ProgressViewModel
+
 
 
 ) {
@@ -255,7 +271,9 @@ fun MainAppScreen(
             }
 
 
-            composable(Screen.Progress.route) { ProgressScreen() }   // Henüz parametre almıyor
+            composable(Screen.Progress.route) {
+                ProgressScreen(progressViewModel = progressViewModel)
+            }
 
 
             composable(Screen.Settings.route) {

@@ -50,4 +50,12 @@ class TaskRepositoryImpl(
             }
         }
     }
+
+    override suspend fun getTasksForDateSync(date: Long): List<Task> {
+        return taskDao.getTasksForDateSync(date)
+    }
+
+    override fun getTasksBetweenDates(startDate: Long, endDate: Long): Flow<List<Task>> {
+        return taskDao.getTasksBetweenDates(startDate, endDate)
+    }
 }

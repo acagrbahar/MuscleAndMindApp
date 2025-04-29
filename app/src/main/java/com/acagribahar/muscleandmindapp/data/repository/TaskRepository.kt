@@ -13,4 +13,6 @@ interface TaskRepository {
 
     // JSON'dan varsayılan görevleri yüklemek için fonksiyon
     suspend fun loadDefaultTasks(): List<DefaultTaskDto>
+    suspend fun getTasksForDateSync(date: Long): List<Task>
+    fun getTasksBetweenDates(startDate: Long, endDate: Long): Flow<List<Task>>
 }

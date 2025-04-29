@@ -45,4 +45,11 @@ interface TaskDao {
     // (Opsiyonel) Belirli bir tarihten önceki görevleri silme
     // @Query("DELETE FROM tasks WHERE date < :date")
     // suspend fun deleteTasksBefore(date: Long)
+
+    // Belirli bir tarihe ait görevleri Flow olmadan, direkt liste olarak getirir.
+    @Query("SELECT * FROM tasks WHERE date = :date")
+    suspend fun getTasksForDateSync(date: Long): List<Task>
+
+    @Query("SELECT * FROM tasks WHERE date BETWEEN :startDate AND :endDate ORDER BY date ASC")
+    fun getTasksBetweenDates(startDate: Long, endDate: Long): Flow<List<Task>>
 }
