@@ -1,24 +1,41 @@
 [
   {
     "type": "body",
+    "category": "Göğüs",
     "title": "Şınav",
     "description": "Klasik şınav hareketi. Göğüs, omuz ve triceps kaslarını çalıştırır."
   },
   {
     "type": "body",
+    "category": "Bacak",
     "title": "Squat",
     "description": "Vücut ağırlığı ile çömelme. Bacak ve kalça kasları için temel egzersiz."
   },
   {
     "type": "body",
+    "category": "Karın",
     "title": "Plank",
     "description": "Karın kaslarını güçlendirmek için statik duruş. 30-60 saniye."
   },
   {
     "type": "body",
+    "category": "Kardiyo",
     "title": "Jumping Jacks",
     "description": "Isınma veya kardiyo için zıplama hareketi. 1 dakika."
   },
+  {
+    "type": "body",
+    "category": "Sırt",
+    "title": "Superman",
+    "description": "Yere yüzüstü uzanıp kol ve bacakları yukarı kaldırma. Sırt ve kalça kasları için."
+  },
+  {
+    "type": "body",
+    "category": "Bacak",
+    "title": "Lunge",
+    "description": "Öne adım atarak dizleri bükme hareketi. Her bacak için 10-12 tekrar."
+  },
+
   {
     "type": "mind",
     "title": "Odaklı Nefes",
@@ -28,15 +45,6 @@
     "type": "mind",
     "title": "Minnet Günlüğü",
     "description": "Bugün minnettar olduğunuz 3 şeyi yazın."
-  },
-  {
-    "type": "mind",
-    "title": "Sessizlik",
-    "description": "3 dakika boyunca tamamen sessiz kalın ve çevrenizdeki sesleri yargılamadan dinleyin."
-  },
-  {
-    "type": "mind",
-    "title": "Farkındalık Yürüyüşü",
-    "description": "5 dakika boyunca sadece adımlarınıza ve çevrenize odaklanarak yavaşça yürüyün."
   }
+
 ]

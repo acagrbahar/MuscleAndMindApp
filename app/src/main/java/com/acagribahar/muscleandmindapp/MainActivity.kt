@@ -18,19 +18,39 @@ import com.acagribahar.muscleandmindapp.data.local.AppDatabase
 import com.acagribahar.muscleandmindapp.data.repository.TaskRepositoryImpl
 import com.acagribahar.muscleandmindapp.navigation.* // Rota sabitleri import
 import com.acagribahar.muscleandmindapp.navigation.Screen.AuthScreen
+import com.acagribahar.muscleandmindapp.navigation.Screen.ExerciseDestinations
 import com.acagribahar.muscleandmindapp.navigation.Screen.Graph
+import com.acagribahar.muscleandmindapp.navigation.Screen.MindTaskDestinations
 import com.acagribahar.muscleandmindapp.ui.screens.* // Ekranlar import
 import com.acagribahar.muscleandmindapp.ui.screens.auth.* // Auth Ekranları import
 import com.acagribahar.muscleandmindapp.ui.screens.HomeViewModel
 import com.acagribahar.muscleandmindapp.ui.screens.HomeViewModelFactory
+import com.acagribahar.muscleandmindapp.ui.screens.exercises.ExerciseDetailScreen
 import com.acagribahar.muscleandmindapp.ui.theme.MindMuscleAppTheme
 import com.google.firebase.auth.FirebaseAuth
+import com.acagribahar.muscleandmindapp.ui.screens.exercises.ExercisesViewModel // ViewModel import
+import com.acagribahar.muscleandmindapp.ui.screens.exercises.ExercisesViewModelFactory // Factory import
+import com.acagribahar.muscleandmindapp.ui.screens.mindtasks.MindTaskDetailScreen
+import com.acagribahar.muscleandmindapp.ui.screens.mindtasks.MindTasksViewModel // ViewModel import
+import com.acagribahar.muscleandmindapp.ui.screens.mindtasks.MindTasksViewModelFactory // Factory import
+
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var taskRepository: TaskRepositoryImpl
-    private lateinit var homeViewModelFactory: HomeViewModelFactory
+
+    //ViewModel'lar
+    private lateinit var exercisesViewModel: ExercisesViewModel
     private lateinit var homeViewModel: HomeViewModel
+    private lateinit var mindTasksViewModel: MindTasksViewModel
+
+
+    //Factory'ler
+    private lateinit var homeViewModelFactory: HomeViewModelFactory
+    private lateinit var exercisesViewModelFactory: ExercisesViewModelFactory
+    private lateinit var mindTasksViewModelFactory: MindTasksViewModelFactory // Yeni Factory
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +60,15 @@ class MainActivity : ComponentActivity() {
         taskRepository = TaskRepositoryImpl(database.taskDao(), applicationContext)
         homeViewModelFactory = HomeViewModelFactory(taskRepository)
         homeViewModel = ViewModelProvider(this, homeViewModelFactory)[HomeViewModel::class.java]
+
+        // ExercisesViewModel için de aynı işlemi yap
+        exercisesViewModelFactory = ExercisesViewModelFactory(taskRepository)
+        exercisesViewModel = ViewModelProvider(this, exercisesViewModelFactory)[ExercisesViewModel::class.java]
+
+        // MindTasksViewModel için de aynı işlemi yap
+        mindTasksViewModelFactory = MindTasksViewModelFactory(taskRepository)
+        mindTasksViewModel = ViewModelProvider(this, mindTasksViewModelFactory)[MindTasksViewModel::class.java]
+
 
         setContent {
             MindMuscleAppTheme {
@@ -97,7 +126,11 @@ class MainActivity : ComponentActivity() {
                         // ...MainAppScreen'i çağır ve gerekli parametreleri ilet
                         MainAppScreen(
                             navController = navController, // Üst seviye controller (Logout için)
-                            homeViewModel = homeViewModel   // HomeViewModel
+                            homeViewModel = homeViewModel,
+                            exercisesViewModel = exercisesViewModel,
+                            mindTasksViewModel = mindTasksViewModel
+
+
                         )
                     } // --- Ana Uygulama Grafiği Sonu ---
 
@@ -112,7 +145,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainAppScreen(
     navController: NavHostController, // Üst seviye Controller (Settings'e gidecek)
-    homeViewModel: HomeViewModel    // HomeScreen'e gidecek ViewModel
+    homeViewModel: HomeViewModel,
+    exercisesViewModel: ExercisesViewModel,
+    mindTasksViewModel: MindTasksViewModel
+
+
 ) {
     // İç navigasyon (alt sekmeler arası) için ayrı bir Controller
     val mainNavController = rememberNavController()
@@ -150,9 +187,77 @@ fun MainAppScreen(
                 // HomeScreen'e ViewModel iletilir
                 HomeScreen(homeViewModel = homeViewModel)
             }
-            composable(Screen.Exercises.route) { ExercisesScreen() } // Henüz parametre almıyor
-            composable(Screen.MindTasks.route) { MindTasksScreen() } // Henüz parametre almıyor
+
+
+            composable(Screen.Exercises.route) {
+                ExercisesScreen(
+                    exercisesViewModel = exercisesViewModel,
+                    onExerciseClick = { exerciseDto ->
+                        // Navigasyonda argüman olarak başlığı gönderirken URL encode etmek iyi olabilir
+                        val encodedTitle = java.net.URLEncoder.encode(exerciseDto.title, "UTF-8")
+                        mainNavController.navigate("${ExerciseDestinations.EXERCISE_DETAIL_ROUTE}/$encodedTitle")
+                    }
+
+                    )
+            }
+
+
+            composable(
+                route = ExerciseDestinations.routeWithArgs, // "exercise_detail/{exerciseTitle}"
+                arguments = ExerciseDestinations.arguments // Argüman tanımı
+            ) { backStackEntry ->
+                // Navigasyondan argümanı al
+                val encodedTitle = backStackEntry.arguments?.getString(ExerciseDestinations.ARG_EXERCISE_TITLE)
+                val exerciseTitle = encodedTitle?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+
+                if (exerciseTitle != null) {
+                    ExerciseDetailScreen(
+                        exerciseTitle = exerciseTitle,
+                        exercisesViewModel = exercisesViewModel, // ViewModel'ı detay ekranına da iletiyoruz
+                        navController = mainNavController // Geri gitmek için iç controller
+                    )
+                } else {
+                    // Hata durumu - başlık alınamadı (opsiyonel: Hata ekranı gösterilebilir)
+                    navController.popBackStack() // Veya basitçe geri dön
+                }
+            }
+
+
+            composable(Screen.MindTasks.route) {
+                // MindTasksScreen'e tıklama olayını iletiyoruz
+                MindTasksScreen(
+                    mindTasksViewModel = mindTasksViewModel,
+                    onMindTaskClick = { mindTaskDto ->
+                        // Navigasyonda argüman olarak başlığı gönder
+                        val encodedTitle = java.net.URLEncoder.encode(mindTaskDto.title, "UTF-8")
+                        mainNavController.navigate("${MindTaskDestinations.MIND_TASK_DETAIL_ROUTE}/$encodedTitle")
+                    }
+                )
+            }
+
+            composable(
+                route = MindTaskDestinations.routeWithArgs,
+                arguments = MindTaskDestinations.arguments
+            ) { backStackEntry ->
+                // Navigasyondan argümanı al
+                val encodedTitle = backStackEntry.arguments?.getString(MindTaskDestinations.ARG_TASK_TITLE)
+                val taskTitle = encodedTitle?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+
+                if (taskTitle != null) {
+                    MindTaskDetailScreen(
+                        taskTitle = taskTitle,
+                        mindTasksViewModel = mindTasksViewModel, // ViewModel'ı detay ekranına iletiyoruz
+                        navController = mainNavController // Geri gitmek için iç controller
+                    )
+                } else {
+                    navController.popBackStack() // Başlık yoksa geri dön
+                }
+            }
+
+
             composable(Screen.Progress.route) { ProgressScreen() }   // Henüz parametre almıyor
+
+
             composable(Screen.Settings.route) {
                 // SettingsScreen'e ÜST SEVİYE navController iletilir (Logout için)
                 SettingsScreen(navController = navController)

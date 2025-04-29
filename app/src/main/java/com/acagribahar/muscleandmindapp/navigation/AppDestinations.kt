@@ -50,5 +50,29 @@ sealed class Screen(val route: String, val title: String, val icon: androidx.com
         const val REGISTER = "register"
     }
 
-// Screen sealed class'ı zaten Main graph'ın ekranlarını içeriyor (Home, Exercises...)
+    // ... (Mevcut Screen, Graph, AuthScreen objeleri) ...
+
+    object ExerciseDestinations {
+        const val EXERCISE_DETAIL_ROUTE = "exercise_detail" // Ana rota
+        const val ARG_EXERCISE_TITLE = "exerciseTitle" // Argüman adı
+        // Tam yol: "exercise_detail/{exerciseTitle}"
+        val routeWithArgs = "$EXERCISE_DETAIL_ROUTE/{$ARG_EXERCISE_TITLE}"
+        // Argümanları tanımla (NavHost'ta kullanılacak)
+        val arguments = listOf(
+            androidx.navigation.navArgument(ARG_EXERCISE_TITLE) { type = androidx.navigation.NavType.StringType }
+        )
+    }
+
+    object MindTaskDestinations {
+        const val MIND_TASK_DETAIL_ROUTE = "mind_task_detail"
+        const val ARG_TASK_TITLE = "taskTitle" // Argüman adı (Exercise ile aynı olabilir)
+        // Tam yol: "mind_task_detail/{taskTitle}"
+        val routeWithArgs = "$MIND_TASK_DETAIL_ROUTE/{$ARG_TASK_TITLE}"
+        // Argümanları tanımla
+        val arguments = listOf(
+            androidx.navigation.navArgument(ARG_TASK_TITLE) { type = androidx.navigation.NavType.StringType }
+        )
+    }
+
+
 }
