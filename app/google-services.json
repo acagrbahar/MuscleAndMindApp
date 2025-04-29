@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "834197748186",
+    "project_id": "muscleandmindapp",
+    "storage_bucket": "muscleandmindapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:834197748186:android:bc7f32c868567cda1a68e3",
+        "android_client_info": {
+          "package_name": "com.acagribahar.muscleandmindapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTrDoLA3Z-wd7F3mav-Fp-bGrgZiclzMM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
