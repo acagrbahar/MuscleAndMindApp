@@ -116,4 +116,10 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.auth)
+
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose) // collectAsStateWithLifecycle için, güncel versiyonu kontrol edin
+
+    implementation(libs.kotlinx.serialization.json.v163)
+
 }
