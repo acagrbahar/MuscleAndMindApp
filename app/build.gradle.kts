@@ -122,4 +122,6 @@ dependencies {
 
     implementation(libs.kotlinx.serialization.json.v163)
 
+    implementation(libs.androidx.work.runtime.ktx)
+
 }

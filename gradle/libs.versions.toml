@@ -17,6 +17,7 @@ lifecycleViewmodelCompose = "2.8.7"
 materialIconsExtended = "..."
 navigationCompose = "2.8.9"
 roomRuntime = "2.7.1"
+workRuntimeKtx = "2.10.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -36,6 +37,7 @@ androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "
 androidx-room-rxjava2 = { module = "androidx.room:room-rxjava2", version.ref = "roomRuntime" }
 androidx-room-rxjava3 = { module = "androidx.room:room-rxjava3", version.ref = "roomRuntime" }
 androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "roomRuntime" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
