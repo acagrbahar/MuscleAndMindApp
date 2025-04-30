@@ -17,6 +17,7 @@ import androidx.navigation.navigation // nested navigation import
 import com.acagribahar.muscleandmindapp.data.local.AppDatabase
 import com.acagribahar.muscleandmindapp.data.repository.TaskRepositoryImpl
 import com.acagribahar.muscleandmindapp.navigation.* // Rota sabitleri import
+import com.acagribahar.muscleandmindapp.navigation.Screen.AddExerciseDestinations
 import com.acagribahar.muscleandmindapp.navigation.Screen.AuthScreen
 import com.acagribahar.muscleandmindapp.navigation.Screen.ExerciseDestinations
 import com.acagribahar.muscleandmindapp.navigation.Screen.Graph
@@ -25,6 +26,9 @@ import com.acagribahar.muscleandmindapp.ui.screens.* // Ekranlar import
 import com.acagribahar.muscleandmindapp.ui.screens.auth.* // Auth Ekranları import
 import com.acagribahar.muscleandmindapp.ui.screens.HomeViewModel
 import com.acagribahar.muscleandmindapp.ui.screens.HomeViewModelFactory
+import com.acagribahar.muscleandmindapp.ui.screens.exercises.AddExerciseScreen
+import com.acagribahar.muscleandmindapp.ui.screens.exercises.AddExerciseViewModel
+import com.acagribahar.muscleandmindapp.ui.screens.exercises.AddExerciseViewModelFactory
 import com.acagribahar.muscleandmindapp.ui.screens.exercises.ExerciseDetailScreen
 import com.acagribahar.muscleandmindapp.ui.theme.MindMuscleAppTheme
 import com.acagribahar.muscleandmindapp.ui.screens.exercises.ExercisesViewModel // ViewModel import
@@ -50,6 +54,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var mindTasksViewModel: MindTasksViewModel
     private lateinit var progressViewModel: ProgressViewModel
     private lateinit var settingsViewModel: SettingsViewModel
+    private lateinit var addExerciseViewModel: AddExerciseViewModel
 
 
 
@@ -59,7 +64,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var exercisesViewModelFactory: ExercisesViewModelFactory
     private lateinit var mindTasksViewModelFactory: MindTasksViewModelFactory
     private lateinit var progressViewModelFactory: ProgressViewModelFactory
-    private lateinit var settingsViewModelFactory: SettingsViewModelFactory // Yeni Factory
+    private lateinit var settingsViewModelFactory: SettingsViewModelFactory
+    private lateinit var addExerciseViewModelFactory: AddExerciseViewModelFactory
 
     private lateinit var firebaseAuth: FirebaseAuth
 
@@ -79,7 +85,7 @@ class MainActivity : ComponentActivity() {
         homeViewModel = ViewModelProvider(this, homeViewModelFactory)[HomeViewModel::class.java]
 
         // ExercisesViewModel için de aynı işlemi yap
-        exercisesViewModelFactory = ExercisesViewModelFactory(taskRepository)
+        exercisesViewModelFactory = ExercisesViewModelFactory(taskRepository,firebaseAuth)
         exercisesViewModel = ViewModelProvider(this, exercisesViewModelFactory)[ExercisesViewModel::class.java]
 
         // MindTasksViewModel için de aynı işlemi yap
@@ -93,6 +99,10 @@ class MainActivity : ComponentActivity() {
         // <<< SettingsViewModelFactory başlatmasını güncelle (firebaseAuth'ı geç) >>>
         settingsViewModelFactory = SettingsViewModelFactory(taskRepository, firebaseAuth)
         settingsViewModel = ViewModelProvider(this, settingsViewModelFactory)[SettingsViewModel::class.java]
+
+
+        addExerciseViewModelFactory = AddExerciseViewModelFactory(taskRepository, firebaseAuth)
+        addExerciseViewModel = ViewModelProvider(this, addExerciseViewModelFactory)[AddExerciseViewModel::class.java]
 
 
 
@@ -157,6 +167,7 @@ class MainActivity : ComponentActivity() {
                             mindTasksViewModel = mindTasksViewModel,
                             progressViewModel = progressViewModel,
                             settingsViewModel = settingsViewModel,
+                            addExerciseViewModel = addExerciseViewModel,
                             // <<< onLogout lambda'sında firebaseAuth instance'ını kullan >>>
                             onLogout = {
                                 firebaseAuth.signOut() // getInstance() ile alınan instance
@@ -184,6 +195,7 @@ fun MainAppScreen(
     mindTasksViewModel: MindTasksViewModel,
     progressViewModel: ProgressViewModel,
     settingsViewModel: SettingsViewModel,
+    addExerciseViewModel : AddExerciseViewModel,
     onLogout: () -> Unit
 
 
@@ -231,10 +243,14 @@ fun MainAppScreen(
             composable(Screen.Exercises.route) {
                 ExercisesScreen(
                     exercisesViewModel = exercisesViewModel,
-                    onExerciseClick = { exerciseDto ->
+                    onExerciseClick = { displayExercise ->
                         // Navigasyonda argüman olarak başlığı gönderirken URL encode etmek iyi olabilir
-                        val encodedTitle = java.net.URLEncoder.encode(exerciseDto.title, "UTF-8")
-                        mainNavController.navigate("${ExerciseDestinations.EXERCISE_DETAIL_ROUTE}/$encodedTitle")
+                        val encodedTitle = java.net.URLEncoder.encode(displayExercise.title, "UTF-8")
+                        mainNavController.navigate("${ExerciseDestinations.EXERCISE_DETAIL_ROUTE}/${displayExercise.id}")
+                    },
+                    // <<< Yeni egzersiz ekleme ekranına gitmek için lambda >>>
+                    navigateToAddExercise = {
+                        mainNavController.navigate(AddExerciseDestinations.ROUTE) // Yeni rotaya git
                     }
 
                     )
@@ -242,22 +258,22 @@ fun MainAppScreen(
 
 
             composable(
-                route = ExerciseDestinations.routeWithArgs, // "exercise_detail/{exerciseTitle}"
-                arguments = ExerciseDestinations.arguments // Argüman tanımı
+                route = ExerciseDestinations.routeWithArgs, // "exercise_detail/{exerciseId}" olmalı
+                arguments = ExerciseDestinations.arguments // ARG_EXERCISE_ID tanımını içeriyor olmalı
             ) { backStackEntry ->
-                // Navigasyondan argümanı al
-                val encodedTitle = backStackEntry.arguments?.getString(ExerciseDestinations.ARG_EXERCISE_TITLE)
-                val exerciseTitle = encodedTitle?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+                // <<< Argümanı doğru isimle (ARG_EXERCISE_ID) alın >>>
+                val exerciseId = backStackEntry.arguments?.getString(ExerciseDestinations.ARG_EXERCISE_ID)
 
-                if (exerciseTitle != null) {
+                if (exerciseId != null) {
+                    // <<< ExerciseDetailScreen'i doğru parametre (exerciseId) ile çağırın >>>
                     ExerciseDetailScreen(
-                        exerciseTitle = exerciseTitle,
-                        exercisesViewModel = exercisesViewModel, // ViewModel'ı detay ekranına da iletiyoruz
+                        exerciseId = exerciseId, // exerciseTitle yerine exerciseId
+                        exercisesViewModel = exercisesViewModel,
                         navController = mainNavController // Geri gitmek için iç controller
                     )
                 } else {
-                    // Hata durumu - başlık alınamadı (opsiyonel: Hata ekranı gösterilebilir)
-                    navController.popBackStack() // Veya basitçe geri dön
+                    // Başlık/ID yoksa geri dön (iç controller ile)
+                    mainNavController.popBackStack() // <<< navController yerine mainNavController olmalı
                 }
             }
 
@@ -296,6 +312,13 @@ fun MainAppScreen(
 
             composable(Screen.Progress.route) {
                 ProgressScreen(progressViewModel = progressViewModel)
+            }
+
+            composable(AddExerciseDestinations.ROUTE) {
+                AddExerciseScreen(
+                    navController = mainNavController, // Geri gitmek için iç controller
+                    addExerciseViewModel = addExerciseViewModel
+                )
             }
 
 

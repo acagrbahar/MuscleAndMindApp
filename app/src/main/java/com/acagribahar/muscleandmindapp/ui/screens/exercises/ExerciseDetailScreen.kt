@@ -17,13 +17,13 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun ExerciseDetailScreen(
-    exerciseTitle: String,
+    exerciseId: String,
     exercisesViewModel: ExercisesViewModel, // Egzersiz detaylarını almak için
     navController: NavHostController // Geri gitmek için
 ) {
     // ViewModel'dan egzersiz detaylarını al (veya hata yönetimi)
-    val exercise = remember(exerciseTitle) {
-        exercisesViewModel.getExerciseByTitle(exerciseTitle)
+    val exercise : DisplayExercise? = remember(exerciseId) {
+        exercisesViewModel.getDisplayExerciseById(exerciseId)
     }
 
     // Zamanlayıcı state'leri
@@ -51,7 +51,7 @@ fun ExerciseDetailScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (exercise == null) {
-            Text("Egzersiz bulunamadı.")
+            Text("Egzersiz bulunamadı. (ID: $exerciseId)")
             // Geri dön butonu eklenebilir
         } else {
             // Egzersiz Bilgileri
@@ -66,6 +66,10 @@ fun ExerciseDetailScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
+            // <<< İsteğe Bağlı: Özel egzersiz ise belirt >>>
+            if(exercise.isCustom) {
+                Text("(Özel Egzersiz)", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 8.dp))
+            }
             Spacer(modifier = Modifier.height(32.dp))
 
             // Zamanlayıcı Göstergesi

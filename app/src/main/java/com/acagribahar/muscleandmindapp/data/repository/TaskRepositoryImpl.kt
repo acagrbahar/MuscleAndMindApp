@@ -5,6 +5,7 @@ import android.util.Log
 import com.acagribahar.muscleandmindapp.data.local.dao.TaskDao
 import com.acagribahar.muscleandmindapp.data.local.entity.Task
 import com.acagribahar.muscleandmindapp.data.model.DefaultTaskDto
+import com.acagribahar.muscleandmindapp.data.remote.model.UserExercise
 import com.acagribahar.muscleandmindapp.data.remote.model.UserPreferences
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.FirebaseFirestore
@@ -16,6 +17,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json // Kotlinx Serialization Json
 import java.io.IOException
 import com.google.firebase.firestore.Source
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.ktx.toObjects
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
 
 // DAO ve Context'i parametre olarak alır (İleride DI ile sağlanacak)
 class TaskRepositoryImpl(
@@ -26,8 +31,59 @@ class TaskRepositoryImpl(
     // Firestore instance'ını al
     private val db: FirebaseFirestore = Firebase.firestore
 
+
     // Kullanıcı tercihlerini tutan collection referansı
     private val usersCollection = db.collection("users")
+
+    // <<< Yardımcı Fonksiyon: Belirli bir kullanıcının özel egzersiz koleksiyonuna referans >>>
+    private fun customExercisesCollection(userId: String): CollectionReference {
+        return usersCollection.document(userId).collection("customExercises")
+    }
+
+    override suspend fun addCustomExercise(userId: String, exercise: UserExercise): Result<Unit> {
+        return try {
+            // Kullanıcıya ait customExercises koleksiyonuna yeni egzersizi ekle
+            // Firestore otomatik ID oluşturacak ve UserExercise.id alanı (varsa @DocumentId ile) doldurulacak
+            customExercisesCollection(userId).add(exercise.copy(userId = userId)).await() // userId'yi de eklediğimizden emin olalım
+            Log.d("Repository", "Custom exercise added successfully for user $userId")
+            Result.success(Unit) // Başarılı
+        } catch (e: Exception) {
+            Log.e("Repository", "Error adding custom exercise for user $userId: ${e.message}", e)
+            Result.failure(e) // Hata döndür
+        }
+    }
+
+    override fun getCustomExercises(userId: String): Flow<List<UserExercise>> {
+        // Firestore'daki değişiklikleri anlık dinlemek için callbackFlow kullanıyoruz
+        return callbackFlow {
+            Log.d("Repository", "Starting to listen for custom exercises for user $userId")
+            // Belirtilen kullanıcının customExercises koleksiyonunu dinle
+            val listenerRegistration = customExercisesCollection(userId)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        // Hata oluşursa Flow'u hata ile kapat
+                        Log.e("Repository", "Error listening for custom exercises for user $userId", error)
+                        close(error) // Flow'u hata ile sonlandır
+                        return@addSnapshotListener
+                    }
+                    if (snapshot != null) {
+                        // Snapshot null değilse, dokümanları UserExercise listesine çevir
+                        val exercises = snapshot.toObjects(UserExercise::class.java)
+                        Log.d("Repository", "Received ${exercises.size} custom exercises for user $userId")
+                        // Yeni listeyi Flow'a gönder
+                        trySend(exercises).isSuccess // Gönderildi mi diye kontrol edilebilir
+                    } else {
+                        Log.d("Repository", "Received null snapshot for custom exercises for user $userId")
+                    }
+                }
+
+            // Flow iptal edildiğinde Firestore listener'ını kaldır
+            awaitClose {
+                Log.d("Repository", "Stopping listener for custom exercises for user $userId")
+                listenerRegistration.remove()
+            }
+        }
+    }
 
     override suspend fun getUserPreferences(userId: String): UserPreferences? {
         Log.d("Repository", "Attempting to get preferences for user: $userId")

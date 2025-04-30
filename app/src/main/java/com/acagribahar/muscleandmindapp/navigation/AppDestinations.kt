@@ -21,6 +21,10 @@ sealed class Screen(val route: String, val title: String, val icon: androidx.com
     // Ayarlar
     object Settings : Screen("settings", "Ayarlar", androidx.compose.material.icons.Icons.Filled.Settings)
 
+    object AddExerciseDestinations {
+        const val ROUTE = "add_exercise"
+    }
+
     // Bottom Navigation'da görünecek ekranları listelemek için yardımcı liste
     companion object {
         val bottomNavItems = listOf(Home, Exercises, MindTasks, Progress, Settings)
@@ -54,12 +58,12 @@ sealed class Screen(val route: String, val title: String, val icon: androidx.com
 
     object ExerciseDestinations {
         const val EXERCISE_DETAIL_ROUTE = "exercise_detail" // Ana rota
-        const val ARG_EXERCISE_TITLE = "exerciseTitle" // Argüman adı
+        const val ARG_EXERCISE_ID = "exerciseId" // Argüman adı
         // Tam yol: "exercise_detail/{exerciseTitle}"
-        val routeWithArgs = "$EXERCISE_DETAIL_ROUTE/{$ARG_EXERCISE_TITLE}"
+        val routeWithArgs = "$EXERCISE_DETAIL_ROUTE/{$ARG_EXERCISE_ID}"
         // Argümanları tanımla (NavHost'ta kullanılacak)
         val arguments = listOf(
-            androidx.navigation.navArgument(ARG_EXERCISE_TITLE) { type = androidx.navigation.NavType.StringType }
+            androidx.navigation.navArgument(ARG_EXERCISE_ID) { type = androidx.navigation.NavType.StringType }
         )
     }
 

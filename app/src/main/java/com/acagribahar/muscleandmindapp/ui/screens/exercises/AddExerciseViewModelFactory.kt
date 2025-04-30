@@ -5,16 +5,15 @@ import androidx.lifecycle.ViewModelProvider
 import com.acagribahar.muscleandmindapp.data.repository.TaskRepository
 import com.google.firebase.auth.FirebaseAuth
 
-class ExercisesViewModelFactory(
+class AddExerciseViewModelFactory(
     private val repository: TaskRepository,
     private val firebaseAuth: FirebaseAuth
-
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(ExercisesViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(AddExerciseViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ExercisesViewModel(repository,firebaseAuth) as T
+            return AddExerciseViewModel(repository, firebaseAuth) as T
         }
-        throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

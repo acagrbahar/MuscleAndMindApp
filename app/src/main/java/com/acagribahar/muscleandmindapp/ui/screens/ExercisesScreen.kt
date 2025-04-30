@@ -15,71 +15,88 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.acagribahar.muscleandmindapp.data.model.DefaultTaskDto
 import com.acagribahar.muscleandmindapp.ui.screens.exercises.ExercisesViewModel // ViewModel import
 import androidx.compose.foundation.clickable // clickable import
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import com.acagribahar.muscleandmindapp.ui.screens.exercises.DisplayExercise
 
-@OptIn(ExperimentalFoundationApi::class) // stickyHeader için gerekli
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ExercisesScreen(
     exercisesViewModel: ExercisesViewModel, // ViewModel'ı parametre olarak al
-    onExerciseClick: (DefaultTaskDto) -> Unit // Yeni lambda parametresi
+    onExerciseClick: (DisplayExercise) -> Unit,
+    navigateToAddExercise: () -> Unit
 
 ) {
     // ViewModel'dan gruplanmış egzersizleri State olarak al
     val groupedExercises by exercisesViewModel.groupedExercises.collectAsStateWithLifecycle()
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text(
-            "Tüm Egzersizler",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
 
-        if (groupedExercises.isEmpty()) {
-            // Yükleniyor veya egzersiz yoksa mesaj göster
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                Text("Kullanılabilir egzersiz bulunamadı veya yükleniyor...")
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(onClick = navigateToAddExercise) { // <<< FAB tıklandığında lambda'yı çağır
+                Icon(Icons.Filled.Add, contentDescription = "Yeni Egzersiz Ekle")
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp) // Gruplar arası boşluk
-            ) {
-                groupedExercises.forEach { group ->
-                    // Kategori Başlığı (Sticky Header)
-                    stickyHeader {
-                        Text(
-                            text = group.category,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surfaceVariant) // Başlık arkaplanı
-                                .padding(vertical = 8.dp, horizontal = 4.dp)
-                        )
-                    }
+        }
+    ) { paddingValues ->
 
-                    // Kategorideki Egzersizler
-                    items(
-                        items = group.exercises,
-                        key = { exercise -> "${group.category}_${exercise.title}" }
-                    ) { exercise ->
-                        // ExerciseListItem'a tıklama işlevini ekle
-                        ExerciseListItem(
-                            exercise = exercise,
-                            modifier = Modifier.clickable { // Tıklanabilir yap
-                                onExerciseClick(exercise) // Lambda'yı çağır
-                            }
-                        )
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Text(
+                "Tüm Egzersizler",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            if (groupedExercises.isEmpty()) {
+                // Yükleniyor veya egzersiz yoksa mesaj göster
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    Text("Kullanılabilir egzersiz bulunamadı veya yükleniyor...")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp) // Gruplar arası boşluk
+                ) {
+                    groupedExercises.forEach { group ->
+                        // Kategori Başlığı (Sticky Header)
+                        stickyHeader {
+                            Text(
+                                text = group.category,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surfaceVariant) // Başlık arkaplanı
+                                    .padding(vertical = 8.dp, horizontal = 4.dp)
+                            )
+                        }
+
+                        // Kategorideki Egzersizler
+                        items(
+                            items = group.exercises,
+                            key = { exercise -> exercise.id }
+                        ) { exercise ->
+                            // ExerciseListItem'a tıklama işlevini ekle
+                            ExerciseListItem(
+                                exercise = exercise,
+                                modifier = Modifier.clickable { // Tıklanabilir yap
+                                    onExerciseClick(exercise) // Lambda'yı çağır
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
+
     }
+
+
 }
 
 // Tek bir egzersiz öğesini gösteren Composable (Checkbox vb. yok)
 @Composable
 fun ExerciseListItem(
-    exercise: DefaultTaskDto,
+    exercise: DisplayExercise,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -99,6 +116,15 @@ fun ExerciseListItem(
                 Text(
                     text = exercise.description,
                     style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            // <<< İsteğe Bağlı: Özel egzersizleri belirtmek için >>>
+            if (exercise.isCustom) {
+                Text(
+                    text = "(Özel Egzersiz)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary, // Farklı renk
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
