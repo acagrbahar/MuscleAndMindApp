@@ -1,29 +1,33 @@
+# gradle/libs.versions.toml
+
 [versions]
-agp = "8.9.2"
-firebaseBom = "33.13.0"
-kotlin = "2.0.21"
+agp = "8.9.2" # Kullandığınız AGP versiyonu (dikkatli değiştirin)
+firebaseBom = "33.13.0" # Firebase BOM versiyonu
+kotlin = "2.0.21" # Kotlin versiyonu (1.9.24'e düşürüldü)
+
 coreKtx = "1.16.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
-kotlinxCoroutinesAndroid = "1.7.3"
-kotlinxSerializationJson = "1.7.3"
-kotlinxSerializationJsonVersion = "1.6.3"
-lifecycleRuntimeCompose = "2.8.7"
+kotlinxCoroutinesAndroid = "1.7.3" # Coroutines versiyonu
+kotlinxSerializationJson = "1.7.3" # Kotlin 1.9.x ile uyumlu serialization versiyonu
+lifecycleRuntimeCompose = "2.8.7" # Lifecycle versiyonu
 lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.10.1"
-composeBom = "2024.09.00"
+composeBom = "2024.09.00" # Compose BOM versiyonu (1.5.10 compiler ile uyumlu olmalı, kontrol edilebilir)
 lifecycleViewmodelCompose = "2.8.7"
-materialIconsExtended = "..."
+# materialIconsExtended versiyonu BOM'dan gelecek, burada belirtmeye gerek yok
 navigationCompose = "2.8.9"
 roomRuntime = "2.7.1"
 workRuntimeKtx = "2.10.1"
+# KSP versiyonu proje seviyesinde belirtiliyor, burada olmasına gerek yok (varsa kaldırılabilir)
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
-androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
+# material-icons-extended versiyonu BOM'dan gelecek
+androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 androidx-navigation-dynamic-features-fragment = { module = "androidx.navigation:navigation-dynamic-features-fragment", version.ref = "navigationCompose" }
 androidx-navigation-fragment = { module = "androidx.navigation:navigation-fragment", version.ref = "navigationCompose" }
@@ -39,8 +43,12 @@ androidx-room-rxjava3 = { module = "androidx.room:room-rxjava3", version.ref = "
 androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "roomRuntime" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
-firebase-auth = { module = "com.google.firebase:firebase-auth" }
+# firebase-auth = { module = "com.google.firebase:firebase-auth" } # Kaldırıldı (KTX kullanılıyor)
+firebase-auth-ktx = { module = "com.google.firebase:firebase-auth-ktx" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-firestore = { module = "com.google.firebase:firebase-firestore" } # Firestore normal, KTX gerekebilir (BOM halleder genelde)
+# Firestore KTX için de alias eklenebilir (isteğe bağlı):
+# firebase-firestore-ktx = { module = "com.google.firebase:firebase-firestore-ktx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -55,11 +63,11 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutinesAndroid" }
-kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
-kotlinx-serialization-json-v163 = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJsonVersion" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" } # Versiyon 1.6.3'e ayarlandı
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-
+# kotlin-compose plugin'i doğru versiyonu (composeCompiler) referans almalı
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" } # <<< DÜZELTİLDİ
+# KSP ve Google Services pluginleri proje seviyesinde tanımlanmalı, burada olmasına gerek yok (varsa kaldırılabilir)

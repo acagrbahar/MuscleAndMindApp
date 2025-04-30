@@ -1,5 +1,6 @@
 package com.acagribahar.muscleandmindapp.ui.screens.progress
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.acagribahar.muscleandmindapp.data.local.entity.Task
@@ -16,6 +17,10 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.*
 
 data class DailyProgressUiState(
     val progressPercentage: Float = 0f, // 0.0 ile 1.0 arası
@@ -23,7 +28,13 @@ data class DailyProgressUiState(
     val totalCount: Int = 0
 )
 
-class ProgressViewModel(private val taskRepository: TaskRepository) : ViewModel() {
+class ProgressViewModel(private val taskRepository: TaskRepository,
+                        private val firebaseAuth: FirebaseAuth
+) : ViewModel() {
+
+    // <<< Premium durumunu tutacak StateFlow ekle >>>
+    private val _isPremium = MutableStateFlow(false)
+    val isPremium: StateFlow<Boolean> = _isPremium.asStateFlow()
 
     private val todayTimestamp: Long = getStartOfDayTimestamp()
 
@@ -57,11 +68,46 @@ class ProgressViewModel(private val taskRepository: TaskRepository) : ViewModel(
     */
     // Şimdilik init içinde tetikleyelim:
 
-    init {
-        // ViewModel başlatıldığında seriyi hesapla
-        calculateCurrentStreak()
-        loadWeeklyStats() // Haftalık istatistikleri yükle
+    // <<< Auth durumunu dinlemek için callbackFlow >>>
+    private val userStateFlow: Flow<FirebaseUser?> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener { auth -> trySend(auth.currentUser) }
+        firebaseAuth.addAuthStateListener(listener)
+        awaitClose { firebaseAuth.removeAuthStateListener(listener) }
+    }
 
+    init {
+        // <<< Auth durumunu dinleyerek işlemleri başlat >>>
+        viewModelScope.launch {
+            userStateFlow.collect { firebaseUser ->
+                if (firebaseUser != null) {
+                    // Kullanıcı varsa premium durumunu yükle
+                    loadUserPremiumStatus(firebaseUser.uid)
+                    // Diğer hesaplamaları tetikle (kullanıcı giriş yaptıktan sonra çalışsın)
+                    calculateCurrentStreak()
+                    loadWeeklyStats()
+                } else {
+                    // Kullanıcı yoksa premium değil varsay ve diğer state'leri sıfırla/boşalt
+                    _isPremium.value = false
+                    _currentStreak.value = 0
+                    _weeklyStats.value = emptyList()
+                    // dailyProgressState zaten o günkü görevlere göre Flow'dan güncellenir
+                }
+            }
+        }
+    }
+
+    // <<< Kullanıcının premium durumunu yükleyen fonksiyon (HomeViewModel'a benzer) >>>
+    private fun loadUserPremiumStatus(userId: String) {
+        viewModelScope.launch {
+            try {
+                val prefs = taskRepository.getUserPreferences(userId)
+                _isPremium.value = prefs?.isPremium ?: false
+                Log.d("ProgressViewModel", "Premium status loaded for $userId: ${isPremium.value}")
+            } catch (e: Exception) {
+                Log.e("ProgressViewModel", "Error loading premium status: ${e.message}", e)
+                _isPremium.value = false // Hata durumunda premium değil varsay
+            }
+        }
     }
 
     // Haftalık istatistikleri yükleyip işleyen fonksiyon

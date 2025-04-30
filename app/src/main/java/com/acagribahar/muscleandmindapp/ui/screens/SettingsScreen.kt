@@ -8,41 +8,71 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
-import com.acagribahar.muscleandmindapp.navigation.Screen.Graph // Rota sabitleri için import
-import com.google.firebase.auth.FirebaseAuth
+//import androidx.navigation.NavHostController
+//import com.acagribahar.muscleandmindapp.navigation.Screen.Graph // Rota sabitleri için import
+//import com.google.firebase.auth.FirebaseAuth
+import android.widget.Toast
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.acagribahar.muscleandmindapp.ui.screens.settings.SettingsViewModel
+import androidx.compose.runtime.getValue
 
 @Composable
 fun SettingsScreen(
-    navController: NavHostController // Üst seviye NavController parametresi
+    settingsViewModel: SettingsViewModel,
+    onLogout: () -> Unit
+
 ) {
-    val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    //val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center // Butonu ortalamak için
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Ayarlar Ekranı", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(32.dp))
+        Text("Ayarlar", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Çıkış Yap Butonu
-        Button(onClick = {
-            // 1. Firebase'den çıkış yap
-            auth.signOut()
 
-            // 2. Kullanıcıyı Login ekranına yönlendir (Auth Grafiğine)
-            //    ve Main Grafiği geri yığından temizle
-            navController.navigate(Graph.AUTHENTICATION) {
-                popUpTo(Graph.MAIN) { // Ana grafiğe kadar olan her şeyi temizle
-                    inclusive = true // Ana grafik de dahil olmak üzere temizle
+        if (uiState.isLoading) {
+            CircularProgressIndicator()
+        } else if (uiState.errorMessage != null) {
+            Text("Hata: ${uiState.errorMessage}", color = MaterialTheme.colorScheme.error)
+        } else {
+            // Premium Durumu
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Hesap Durumu", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        if (uiState.isPremium) "Premium Üye ✨" else "Ücretsiz Kullanıcı",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Premium Butonu/Mesajı
+                    if (!uiState.isPremium) {
+                        Button(onClick = {
+                            // TODO: Play Billing akışını başlat
+                            Toast.makeText(context, "Premium'a geçiş yakında!", Toast.LENGTH_SHORT).show()
+                        }) {
+                            Text("Premium'a Geç")
+                        }
+                    } else {
+                        Text("Tüm premium özellikler aktif!")
+                        // Buraya "Aboneliği Yönet" butonu eklenebilir
+                    }
                 }
-                launchSingleTop = true // Auth grafiğinden zaten varsa yenisini açma
             }
-        }) {
-            Text("Çıkış Yap")
         }
 
         // Diğer ayar öğeleri buraya eklenebilir...
@@ -51,5 +81,17 @@ fun SettingsScreen(
         Text("Tema Seçimi (Yakında)")
         Text("Bildirim Ayarları (Yakında)")
 
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Çıkış Yap Butonu
+        Button(
+            // <<< onClick içindeki eski kodu silip sadece onLogout() çağırın >>>
+            onClick = onLogout, // MainActivity'den gelen lambda'yı çağırır (hem signOut hem navigate yapar)
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+        ) {
+            Text("Çıkış Yap")
+        }
+
     }
+
 }

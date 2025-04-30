@@ -2,6 +2,7 @@ package com.acagribahar.muscleandmindapp.data.repository
 
 import com.acagribahar.muscleandmindapp.data.local.entity.Task
 import com.acagribahar.muscleandmindapp.data.model.DefaultTaskDto
+import com.acagribahar.muscleandmindapp.data.remote.model.UserPreferences
 import kotlinx.coroutines.flow.Flow
 
 interface TaskRepository {
@@ -15,4 +16,9 @@ interface TaskRepository {
     suspend fun loadDefaultTasks(): List<DefaultTaskDto>
     suspend fun getTasksForDateSync(date: Long): List<Task>
     fun getTasksBetweenDates(startDate: Long, endDate: Long): Flow<List<Task>>
+
+    suspend fun getUserPreferences(userId: String): UserPreferences?
+    suspend fun updateUserPremiumStatus(userId: String, isPremium: Boolean)
+    // Kullanıcı ilk kez girdiğinde veya veri yoksa varsayılan tercihleri oluşturmak için:
+    suspend fun createUserPreferences(userId: String)
 }

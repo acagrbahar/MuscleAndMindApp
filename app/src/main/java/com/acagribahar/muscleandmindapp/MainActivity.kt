@@ -27,7 +27,6 @@ import com.acagribahar.muscleandmindapp.ui.screens.HomeViewModel
 import com.acagribahar.muscleandmindapp.ui.screens.HomeViewModelFactory
 import com.acagribahar.muscleandmindapp.ui.screens.exercises.ExerciseDetailScreen
 import com.acagribahar.muscleandmindapp.ui.theme.MindMuscleAppTheme
-import com.google.firebase.auth.FirebaseAuth
 import com.acagribahar.muscleandmindapp.ui.screens.exercises.ExercisesViewModel // ViewModel import
 import com.acagribahar.muscleandmindapp.ui.screens.exercises.ExercisesViewModelFactory // Factory import
 import com.acagribahar.muscleandmindapp.ui.screens.mindtasks.MindTaskDetailScreen
@@ -35,7 +34,11 @@ import com.acagribahar.muscleandmindapp.ui.screens.mindtasks.MindTasksViewModel 
 import com.acagribahar.muscleandmindapp.ui.screens.mindtasks.MindTasksViewModelFactory // Factory import
 import com.acagribahar.muscleandmindapp.ui.screens.progress.ProgressViewModel // ViewModel import
 import com.acagribahar.muscleandmindapp.ui.screens.progress.ProgressViewModelFactory // Factory import
-
+import com.acagribahar.muscleandmindapp.ui.screens.settings.SettingsViewModel // ViewModel import
+import com.acagribahar.muscleandmindapp.ui.screens.settings.SettingsViewModelFactory // Factory import
+//import com.google.firebase.auth.ktx.auth
+//import com.google.firebase.ktx.Firebase
+import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
 
@@ -46,6 +49,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var homeViewModel: HomeViewModel
     private lateinit var mindTasksViewModel: MindTasksViewModel
     private lateinit var progressViewModel: ProgressViewModel
+    private lateinit var settingsViewModel: SettingsViewModel
+
 
 
 
@@ -53,19 +58,24 @@ class MainActivity : ComponentActivity() {
     private lateinit var homeViewModelFactory: HomeViewModelFactory
     private lateinit var exercisesViewModelFactory: ExercisesViewModelFactory
     private lateinit var mindTasksViewModelFactory: MindTasksViewModelFactory
-    private lateinit var progressViewModelFactory: ProgressViewModelFactory // Yeni Factory
+    private lateinit var progressViewModelFactory: ProgressViewModelFactory
+    private lateinit var settingsViewModelFactory: SettingsViewModelFactory // Yeni Factory
 
+    private lateinit var firebaseAuth: FirebaseAuth
 
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        firebaseAuth = FirebaseAuth.getInstance()
+
+
         // Repository, Factory ve ViewModel'ı burada başlat
         val database = AppDatabase.getDatabase(applicationContext)
         taskRepository = TaskRepositoryImpl(database.taskDao(), applicationContext)
 
-        homeViewModelFactory = HomeViewModelFactory(taskRepository)
+        homeViewModelFactory = HomeViewModelFactory(taskRepository,firebaseAuth)
         homeViewModel = ViewModelProvider(this, homeViewModelFactory)[HomeViewModel::class.java]
 
         // ExercisesViewModel için de aynı işlemi yap
@@ -77,8 +87,12 @@ class MainActivity : ComponentActivity() {
         mindTasksViewModel = ViewModelProvider(this, mindTasksViewModelFactory)[MindTasksViewModel::class.java]
 
         // ProgressViewModel için de aynı işlemi yap
-        progressViewModelFactory = ProgressViewModelFactory(taskRepository)
+        progressViewModelFactory = ProgressViewModelFactory(taskRepository,firebaseAuth)
         progressViewModel = ViewModelProvider(this, progressViewModelFactory)[ProgressViewModel::class.java]
+
+        // <<< SettingsViewModelFactory başlatmasını güncelle (firebaseAuth'ı geç) >>>
+        settingsViewModelFactory = SettingsViewModelFactory(taskRepository, firebaseAuth)
+        settingsViewModel = ViewModelProvider(this, settingsViewModelFactory)[SettingsViewModel::class.java]
 
 
 
@@ -87,8 +101,9 @@ class MainActivity : ComponentActivity() {
                 // Üst seviye NavController
                 val navController = rememberNavController()
 
+                val currentUser = firebaseAuth.currentUser
                 // Başlangıç noktasını belirle (Auth mu Main mi?)
-                val startDestination = if (FirebaseAuth.getInstance().currentUser != null) {
+                val startDestination = if (currentUser != null) {
                     Graph.MAIN
                 } else {
                     Graph.AUTHENTICATION
@@ -134,17 +149,22 @@ class MainActivity : ComponentActivity() {
                     } // --- Kimlik Doğrulama Grafiği Sonu ---
 
                     // --- Ana Uygulama Grafiği ---
-                    composable(Graph.MAIN) { // Ana rota çağrıldığında...
-                        // ...MainAppScreen'i çağır ve gerekli parametreleri ilet
+                    composable(Graph.MAIN) {
                         MainAppScreen(
-                            navController = navController, // Üst seviye controller (Logout için)
+                            navController = navController,
                             homeViewModel = homeViewModel,
                             exercisesViewModel = exercisesViewModel,
                             mindTasksViewModel = mindTasksViewModel,
-                            progressViewModel = progressViewModel
-
-
-
+                            progressViewModel = progressViewModel,
+                            settingsViewModel = settingsViewModel,
+                            // <<< onLogout lambda'sında firebaseAuth instance'ını kullan >>>
+                            onLogout = {
+                                firebaseAuth.signOut() // getInstance() ile alınan instance
+                                navController.navigate(Graph.AUTHENTICATION) {
+                                    popUpTo(Graph.MAIN) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
                         )
                     } // --- Ana Uygulama Grafiği Sonu ---
 
@@ -162,7 +182,10 @@ fun MainAppScreen(
     homeViewModel: HomeViewModel,
     exercisesViewModel: ExercisesViewModel,
     mindTasksViewModel: MindTasksViewModel,
-    progressViewModel: ProgressViewModel
+    progressViewModel: ProgressViewModel,
+    settingsViewModel: SettingsViewModel,
+    onLogout: () -> Unit
+
 
 
 
@@ -277,8 +300,13 @@ fun MainAppScreen(
 
 
             composable(Screen.Settings.route) {
-                // SettingsScreen'e ÜST SEVİYE navController iletilir (Logout için)
-                SettingsScreen(navController = navController)
+
+                SettingsScreen(
+                    settingsViewModel = settingsViewModel,
+                    onLogout = onLogout
+
+
+                )
             }
         } // --- İÇ NavHost Sonu ---
     }
