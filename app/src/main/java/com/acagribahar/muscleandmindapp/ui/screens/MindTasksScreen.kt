@@ -13,6 +13,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.acagribahar.muscleandmindapp.data.model.DefaultTaskDto
 import com.acagribahar.muscleandmindapp.ui.screens.mindtasks.MindTasksViewModel // ViewModel import
 import androidx.compose.foundation.clickable // clickable import
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.ui.graphics.vector.ImageVector
 
 @Composable
 fun MindTasksScreen(
@@ -61,27 +64,44 @@ fun MindTaskListItem(
     task: DefaultTaskDto,
     modifier: Modifier = Modifier
 ) {
+
+    // <<< Zihin ikonu >>>
+    val typeIcon: ImageVector = Icons.Filled.Psychology
+
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(
+        // <<< Row kullanarak ikonu metinlerin yanına ekleyelim >>>
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically // Dikeyde ortala
         ) {
-            Text(
-                text = task.title,
-                style = MaterialTheme.typography.titleMedium
+            // <<< İkonu ekle >>>
+            Icon(
+                imageVector = typeIcon,
+                contentDescription = "Zihin Görevi",
+                modifier = Modifier.size(24.dp).padding(end = 12.dp), // Boyut ve sağ boşluk
+                tint = MaterialTheme.colorScheme.primary // Tema rengi
             )
-            if (task.description.isNotBlank()) {
+            // <<< Mevcut Column (başlık ve açıklama) >>>
+            Column(
+                modifier = Modifier.weight(1f) // Kalan alanı kaplasın
+            ) {
                 Text(
-                    text = task.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
+                    text = task.title,
+                    style = MaterialTheme.typography.titleMedium
                 )
-            }
-        }
-        // Buraya tıklandığında detay sayfasına gitme işlevi eklenecek
+                if (task.description.isNotBlank()) {
+                    Text(
+                        text = task.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            } // Column Sonu
+        } // Row Sonu
     }
 }

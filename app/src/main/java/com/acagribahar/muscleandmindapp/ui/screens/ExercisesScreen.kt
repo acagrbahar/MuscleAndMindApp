@@ -54,7 +54,7 @@ fun ExercisesScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp) // Gruplar arası boşluk
+                    verticalArrangement = Arrangement.spacedBy(12.dp) // Gruplar arası boşluk
                 ) {
                     groupedExercises.forEach { group ->
                         // Kategori Başlığı (Sticky Header)
@@ -66,7 +66,7 @@ fun ExercisesScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(MaterialTheme.colorScheme.surfaceVariant) // Başlık arkaplanı
-                                    .padding(vertical = 8.dp, horizontal = 4.dp)
+                                    .padding(vertical = 8.dp, horizontal = 16.dp)
                             )
                         }
 
@@ -100,7 +100,7 @@ fun ExerciseListItem(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 8.dp), // Başlığın altına biraz boşluk
+        modifier = modifier.fillMaxWidth(), // Başlığın altına biraz boşluk
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(

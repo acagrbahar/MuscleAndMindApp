@@ -1,14 +1,23 @@
 package com.acagribahar.muscleandmindapp
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding // Padding import
 import androidx.compose.material3.* // Material 3 importları
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue // getValue import
 import androidx.compose.ui.Modifier // Modifier import
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy // hierarchy import
 import androidx.navigation.NavGraph.Companion.findStartDestination // findStartDestination import
 import androidx.navigation.NavHostController
@@ -38,8 +47,14 @@ import com.acagribahar.muscleandmindapp.ui.screens.mindtasks.MindTasksViewModel 
 import com.acagribahar.muscleandmindapp.ui.screens.mindtasks.MindTasksViewModelFactory // Factory import
 import com.acagribahar.muscleandmindapp.ui.screens.progress.ProgressViewModel // ViewModel import
 import com.acagribahar.muscleandmindapp.ui.screens.progress.ProgressViewModelFactory // Factory import
+import com.acagribahar.muscleandmindapp.ui.screens.settings.SettingsUiState
 import com.acagribahar.muscleandmindapp.ui.screens.settings.SettingsViewModel // ViewModel import
 import com.acagribahar.muscleandmindapp.ui.screens.settings.SettingsViewModelFactory // Factory import
+import com.google.android.gms.ads.AdListener
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.LoadAdError
 //import com.google.firebase.auth.ktx.auth
 //import com.google.firebase.ktx.Firebase
 import com.google.firebase.auth.FirebaseAuth
@@ -168,6 +183,8 @@ class MainActivity : ComponentActivity() {
                             progressViewModel = progressViewModel,
                             settingsViewModel = settingsViewModel,
                             addExerciseViewModel = addExerciseViewModel,
+                            // <<< SettingsViewModel'ın UI state'ini de geçelim >>>
+                            settingsUiState = settingsViewModel.uiState.collectAsStateWithLifecycle().value, // <<< State'i burada toplayıp değeri geç
                             // <<< onLogout lambda'sında firebaseAuth instance'ını kullan >>>
                             onLogout = {
                                 firebaseAuth.signOut() // getInstance() ile alınan instance
@@ -196,6 +213,7 @@ fun MainAppScreen(
     progressViewModel: ProgressViewModel,
     settingsViewModel: SettingsViewModel,
     addExerciseViewModel : AddExerciseViewModel,
+    settingsUiState: SettingsUiState,
     onLogout: () -> Unit
 
 
@@ -229,109 +247,171 @@ fun MainAppScreen(
         }
     ) { innerPadding ->
         // --- İÇ NavHost (Ana ekranlar arası geçiş) ---
-        NavHost(
-            navController = mainNavController, // İÇ Controller kullanılır
-            startDestination = Screen.Home.route, // Başlangıç ekranı Home
-            modifier = Modifier.padding(innerPadding) // Padding uygulanır
-        ) {
-            composable(Screen.Home.route) {
-                // HomeScreen'e ViewModel iletilir
-                HomeScreen(homeViewModel = homeViewModel)
-            }
+
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            NavHost(
+                navController = mainNavController, // İÇ Controller kullanılır
+                startDestination = Screen.Home.route, // Başlangıç ekranı Home
+                modifier = Modifier.weight(1f) // Padding uygulanır
+            ) {
+                composable(Screen.Home.route) {
+                    // HomeScreen'e ViewModel iletilir
+                    HomeScreen(homeViewModel = homeViewModel)
+                }
 
 
-            composable(Screen.Exercises.route) {
-                ExercisesScreen(
-                    exercisesViewModel = exercisesViewModel,
-                    onExerciseClick = { displayExercise ->
-                        // Navigasyonda argüman olarak başlığı gönderirken URL encode etmek iyi olabilir
-                        val encodedTitle = java.net.URLEncoder.encode(displayExercise.title, "UTF-8")
-                        mainNavController.navigate("${ExerciseDestinations.EXERCISE_DETAIL_ROUTE}/${displayExercise.id}")
-                    },
-                    // <<< Yeni egzersiz ekleme ekranına gitmek için lambda >>>
-                    navigateToAddExercise = {
-                        mainNavController.navigate(AddExerciseDestinations.ROUTE) // Yeni rotaya git
-                    }
-
-                    )
-            }
-
-
-            composable(
-                route = ExerciseDestinations.routeWithArgs, // "exercise_detail/{exerciseId}" olmalı
-                arguments = ExerciseDestinations.arguments // ARG_EXERCISE_ID tanımını içeriyor olmalı
-            ) { backStackEntry ->
-                // <<< Argümanı doğru isimle (ARG_EXERCISE_ID) alın >>>
-                val exerciseId = backStackEntry.arguments?.getString(ExerciseDestinations.ARG_EXERCISE_ID)
-
-                if (exerciseId != null) {
-                    // <<< ExerciseDetailScreen'i doğru parametre (exerciseId) ile çağırın >>>
-                    ExerciseDetailScreen(
-                        exerciseId = exerciseId, // exerciseTitle yerine exerciseId
+                composable(Screen.Exercises.route) {
+                    ExercisesScreen(
                         exercisesViewModel = exercisesViewModel,
-                        navController = mainNavController // Geri gitmek için iç controller
+                        onExerciseClick = { displayExercise ->
+                            // Navigasyonda argüman olarak başlığı gönderirken URL encode etmek iyi olabilir
+                            val encodedTitle = java.net.URLEncoder.encode(displayExercise.title, "UTF-8")
+                            mainNavController.navigate("${ExerciseDestinations.EXERCISE_DETAIL_ROUTE}/${displayExercise.id}")
+                        },
+                        // <<< Yeni egzersiz ekleme ekranına gitmek için lambda >>>
+                        navigateToAddExercise = {
+                            mainNavController.navigate(AddExerciseDestinations.ROUTE) // Yeni rotaya git
+                        }
+
                     )
-                } else {
-                    // Başlık/ID yoksa geri dön (iç controller ile)
-                    mainNavController.popBackStack() // <<< navController yerine mainNavController olmalı
+                }
+
+
+                composable(
+                    route = ExerciseDestinations.routeWithArgs, // "exercise_detail/{exerciseId}" olmalı
+                    arguments = ExerciseDestinations.arguments // ARG_EXERCISE_ID tanımını içeriyor olmalı
+                ) { backStackEntry ->
+                    // <<< Argümanı doğru isimle (ARG_EXERCISE_ID) alın >>>
+                    val exerciseId = backStackEntry.arguments?.getString(ExerciseDestinations.ARG_EXERCISE_ID)
+
+                    if (exerciseId != null) {
+                        // <<< ExerciseDetailScreen'i doğru parametre (exerciseId) ile çağırın >>>
+                        ExerciseDetailScreen(
+                            exerciseId = exerciseId, // exerciseTitle yerine exerciseId
+                            exercisesViewModel = exercisesViewModel,
+                            navController = mainNavController // Geri gitmek için iç controller
+                        )
+                    } else {
+                        // Başlık/ID yoksa geri dön (iç controller ile)
+                        mainNavController.popBackStack() // <<< navController yerine mainNavController olmalı
+                    }
+                }
+
+
+                composable(Screen.MindTasks.route) {
+                    // MindTasksScreen'e tıklama olayını iletiyoruz
+                    MindTasksScreen(
+                        mindTasksViewModel = mindTasksViewModel,
+                        onMindTaskClick = { mindTaskDto ->
+                            // Navigasyonda argüman olarak başlığı gönder
+                            val encodedTitle = java.net.URLEncoder.encode(mindTaskDto.title, "UTF-8")
+                            mainNavController.navigate("${MindTaskDestinations.MIND_TASK_DETAIL_ROUTE}/$encodedTitle")
+                        }
+                    )
+                }
+
+                composable(
+                    route = MindTaskDestinations.routeWithArgs,
+                    arguments = MindTaskDestinations.arguments
+                ) { backStackEntry ->
+                    // Navigasyondan argümanı al
+                    val encodedTitle = backStackEntry.arguments?.getString(MindTaskDestinations.ARG_TASK_TITLE)
+                    val taskTitle = encodedTitle?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+
+                    if (taskTitle != null) {
+                        MindTaskDetailScreen(
+                            taskTitle = taskTitle,
+                            mindTasksViewModel = mindTasksViewModel, // ViewModel'ı detay ekranına iletiyoruz
+                            navController = mainNavController // Geri gitmek için iç controller
+                        )
+                    } else {
+                        navController.popBackStack() // Başlık yoksa geri dön
+                    }
+                }
+
+
+                composable(Screen.Progress.route) {
+                    ProgressScreen(progressViewModel = progressViewModel)
+                }
+
+                composable(AddExerciseDestinations.ROUTE) {
+                    AddExerciseScreen(
+                        navController = mainNavController, // Geri gitmek için iç controller
+                        addExerciseViewModel = addExerciseViewModel
+                    )
+                }
+
+
+                composable(Screen.Settings.route) {
+
+                    SettingsScreen(
+                        settingsViewModel = settingsViewModel,
+                        onLogout = onLogout
+
+
+                    )
                 }
             }
 
+            // <<< Banner Reklam Alanı (Sadece ücretsiz kullanıcılar için) >>>
+            if (!settingsUiState.isPremium && !settingsUiState.isLoading) { // Yüklenmiyorsa ve premium değilse göster
+                // AndroidView kullanarak AdView'ı Compose'a ekle
+                AndroidView(
+                    modifier = Modifier
+                        .fillMaxWidth().height(50.dp),
+                    factory = { context ->
+                        Log.d("AdMob", "Creating AdView...") // <<< Log Ekleyin
 
-            composable(Screen.MindTasks.route) {
-                // MindTasksScreen'e tıklama olayını iletiyoruz
-                MindTasksScreen(
-                    mindTasksViewModel = mindTasksViewModel,
-                    onMindTaskClick = { mindTaskDto ->
-                        // Navigasyonda argüman olarak başlığı gönder
-                        val encodedTitle = java.net.URLEncoder.encode(mindTaskDto.title, "UTF-8")
-                        mainNavController.navigate("${MindTaskDestinations.MIND_TASK_DETAIL_ROUTE}/$encodedTitle")
+                        AdView(context).apply {
+                            // <<< BURAYA TEST REKLAM BİRİMİ KİMLİĞİNİZİ YAZIN >>>
+                            adUnitId = "ca-app-pub-3940256099942544/6300978111" // Test ID'si
+                            setAdSize(AdSize.BANNER) // Veya AdSize.FULL_BANNER vb.
+
+                            // <<< AdListener Ekleyin >>>
+                            adListener = object : AdListener() {
+                                override fun onAdLoaded() {
+                                    // Reklam başarıyla yüklendiğinde logla
+                                    Log.d("AdMob", "Banner Ad loaded successfully.")
+                                }
+
+                                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                                    // Reklam yüklenemediğinde hatayı logla
+                                    Log.e("AdMob", "Banner Ad failed to load: ${loadAdError.message} (Code: ${loadAdError.code})")
+                                    // Hatanın domain'ini ve diğer detayları da loglayabilirsiniz: loadAdError.toString()
+                                }
+
+                                override fun onAdOpened() {
+                                    // Reklam açıldığında (tıklandığında) logla
+                                    Log.d("AdMob", "Banner Ad opened.")
+                                }
+
+                                override fun onAdClicked() {
+                                    // Reklam tıklandığında logla
+                                    Log.d("AdMob", "Banner Ad clicked.")
+                                }
+
+                                override fun onAdClosed() {
+                                    // Reklam kapatıldığında (genellikle tam ekran reklamlarda olur)
+                                    Log.d("AdMob", "Banner Ad closed.")
+                                }
+                            }
+
+                            // Reklamı yükle
+                            Log.d("AdMob", "Requesting Ad...") // <<< Log Ekleyin
+                            loadAd(AdRequest.Builder().build())
+                        }
                     }
                 )
             }
 
-            composable(
-                route = MindTaskDestinations.routeWithArgs,
-                arguments = MindTaskDestinations.arguments
-            ) { backStackEntry ->
-                // Navigasyondan argümanı al
-                val encodedTitle = backStackEntry.arguments?.getString(MindTaskDestinations.ARG_TASK_TITLE)
-                val taskTitle = encodedTitle?.let { java.net.URLDecoder.decode(it, "UTF-8") }
-
-                if (taskTitle != null) {
-                    MindTaskDetailScreen(
-                        taskTitle = taskTitle,
-                        mindTasksViewModel = mindTasksViewModel, // ViewModel'ı detay ekranına iletiyoruz
-                        navController = mainNavController // Geri gitmek için iç controller
-                    )
-                } else {
-                    navController.popBackStack() // Başlık yoksa geri dön
-                }
-            }
 
 
-            composable(Screen.Progress.route) {
-                ProgressScreen(progressViewModel = progressViewModel)
-            }
-
-            composable(AddExerciseDestinations.ROUTE) {
-                AddExerciseScreen(
-                    navController = mainNavController, // Geri gitmek için iç controller
-                    addExerciseViewModel = addExerciseViewModel
-                )
-            }
 
 
-            composable(Screen.Settings.route) {
 
-                SettingsScreen(
-                    settingsViewModel = settingsViewModel,
-                    onLogout = onLogout
+        }
 
-
-                )
-            }
-        } // --- İÇ NavHost Sonu ---
+         // --- İÇ NavHost Sonu ---
     }
 } // --- MainAppScreen Sonu ---
 

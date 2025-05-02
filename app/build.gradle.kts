@@ -7,6 +7,7 @@ plugins {
     id("com.google.devtools.ksp")
     kotlin("plugin.serialization") version "2.0.21"
     id("com.google.gms.google-services") // Google Services plugini
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -89,6 +90,9 @@ dependencies {
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
 
+    implementation(libs.play.services.ads)
+
+
     // Test Bağımlılıkları
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -100,5 +104,7 @@ dependencies {
     // İsteğe bağlı diğer test bağımlılıkları
     // testImplementation(libs.androidx.room.testing)
     // androidTestImplementation(libs.androidx.navigation.testing)
+
+    implementation(libs.firebase.crashlytics.ktx)
 
 }

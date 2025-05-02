@@ -1,62 +1,63 @@
 package com.acagribahar.muscleandmindapp
 
 import android.app.Application
+import android.util.Log
 import androidx.work.* // WorkManager importları
+import com.acagribahar.muscleandmindapp.data.local.SettingsManager
 import com.acagribahar.muscleandmindapp.worker.ReminderWorker
+import com.google.android.gms.ads.MobileAds
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
 class MindMuscleApplication : Application() {
 
+    // SettingsManager örneğini burada oluşturabiliriz
+    private lateinit var settingsManager: SettingsManager
+
     override fun onCreate() {
         super.onCreate()
+        settingsManager = SettingsManager(this)
+
+        // <<< Mobile Ads SDK'sını başlat >>>
+        MobileAds.initialize(this) {}
+        Log.d("MindMuscleApp", "Mobile Ads SDK Initialized.")
+
         // Uygulama ilk açıldığında periyodik bildirim işini planla
         scheduleDailyReminder()
     }
 
-    private fun scheduleDailyReminder() {
+    // <<< Fonksiyonu public yapalım ki dışarıdan çağrılabilsin >>>
+    fun scheduleDailyReminder() {
         val workManager = WorkManager.getInstance(this)
-
-        // Benzersiz iş adı
         val uniqueWorkName = "DailyReminderWork"
 
-        // Hedef saat (örneğin sabah 9)
-        val targetHour = 9
-        val targetMinute = 0
+        // <<< Kullanıcının seçtiği saati SharedPreferences'dan oku >>>
+        val (targetHour, targetMinute) = settingsManager.getNotificationTime()
 
-        // Şu anki zaman ve hedef zaman arasındaki farkı hesapla
         val currentTime = Calendar.getInstance()
         val targetTime = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, targetHour)
             set(Calendar.MINUTE, targetMinute)
             set(Calendar.SECOND, 0)
-            // Eğer hedef saat zaten geçtiyse, yarının aynı saatini hedefle
             if (before(currentTime)) {
                 add(Calendar.DAY_OF_YEAR, 1)
             }
         }
 
-        // İlk çalıştırma için gecikme süresi (milisaniye cinsinden)
         val initialDelay = targetTime.timeInMillis - currentTime.timeInMillis
 
-        // Periyodik iş isteğini oluştur (24 saatte bir tekrarla)
-        val reminderRequest = PeriodicWorkRequestBuilder<ReminderWorker>(
-            repeatInterval = 24, // Tekrar aralığı
-            repeatIntervalTimeUnit = TimeUnit.HOURS // Aralık birimi
-        )
-            .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS) // İlk gecikme
-            // .setConstraints(Constraints.Builder().setRequiresBatteryNotLow(true).build()) // Opsiyonel kısıtlamalar
+        val reminderRequest = PeriodicWorkRequestBuilder<ReminderWorker>(24, TimeUnit.HOURS)
+            .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
             .build()
 
-        // İşi benzersiz olarak sıraya ekle (aynı işin tekrar eklenmesini önler)
-        // KEEP: Eğer aynı isimde bir iş zaten varsa, yenisini ekleme, eskisini koru.
-        // REPLACE: Eğer aynı isimde bir iş varsa, eskisini iptal et, yenisini ekle.
+        // <<< Politikayı REPLACE yapalım ki yeniden planlama yapılabilsin >>>
         workManager.enqueueUniquePeriodicWork(
             uniqueWorkName,
-            ExistingPeriodicWorkPolicy.KEEP, // veya REPLACE
+            ExistingPeriodicWorkPolicy.REPLACE, // <<< KEEP yerine REPLACE
             reminderRequest
         )
 
-        println("Günlük hatırlatıcı işi planlandı. İlk çalışma ${initialDelay / 1000 / 60} dakika sonra.") // Loglama
+        Log.d("MindMuscleApp", "Daily reminder scheduled. Target: $targetHour:$targetMinute. Initial delay: ${initialDelay / 1000 / 60} min.") // <<< Loglama güncellendi
+        // Önceki Log.d importunu eklemeyi unutmayın: import android.util.Log
     }
 }

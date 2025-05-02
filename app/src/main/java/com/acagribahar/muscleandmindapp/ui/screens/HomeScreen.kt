@@ -3,6 +3,9 @@ package com.acagribahar.muscleandmindapp.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items // items için import
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue // by için import
@@ -10,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle // collectAsStateWithLifecycle için import
 import androidx.lifecycle.viewmodel.compose.viewModel // viewModel() için import
@@ -88,9 +92,23 @@ fun TaskItem(
     onToggleComplete: (Task) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // <<< Tamamlanma durumuna göre renk ve metin dekorasyonu belirle >>>
+    val textColor = if (task.isCompleted) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) else LocalContentColor.current
+    val textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null
+
+    // <<< Görev tipine göre ikon belirle >>>
+    val typeIcon = when(task.type.lowercase(Locale.getDefault())) { // Küçük harfe çevirerek kontrol
+        "body" -> Icons.Filled.FitnessCenter
+        "mind" -> Icons.Filled.Psychology
+        else -> null // Bilinmeyen tip için ikon yok
+    }
+
     Card( // Görevleri kart içinde göstermek daha şık olabilir
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if(task.isCompleted) 1.dp else 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (task.isCompleted) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant // Tamamlanmışsa biraz daha soluk arkaplan
+        )
     ) {
         Row(
             modifier = Modifier
@@ -107,21 +125,42 @@ fun TaskItem(
                 Text(
                     text = task.title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold // Başlığı kalın yap
+                    fontWeight = FontWeight.Bold,
+                    color = textColor,
+                    textDecoration = textDecoration
                 )
                 if (task.description.isNotBlank()) { // Açıklama varsa göster
                     Text(
                         text = task.description,
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 2.dp)
+                        modifier = Modifier.padding(top = 2.dp),
+                        color = textColor,
+                        textDecoration = textDecoration
                     )
                 }
-                // (Opsiyonel) Görev tipini (mind/body) göstermek için
-                Text(
-                    text = "Tür: ${task.type.replaceFirstChar { it.titlecase(Locale.getDefault()) }}", // İlk harfi büyük yap
-                    style = MaterialTheme.typography.labelSmall,
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 4.dp)
-                )
+                ) {
+                    typeIcon?.let {
+                        Icon(
+                            imageVector = it,
+                            contentDescription = "Tür: ${task.type}",
+                            modifier = Modifier.size(16.dp), // İkon boyutu
+                            tint = textColor // İkon rengi de soluklaşsın
+                        )
+                        Spacer(modifier = Modifier.width(4.dp)) // İkon ve metin arası boşluk
+                    }
+                    Text(
+                        text = task.type.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }, // İlk harfi büyük yap
+                        style = MaterialTheme.typography.labelSmall,
+                        // <<< Renk uygula >>>
+                        color = textColor
+                    )
+
+                }
+
             }
         }
     }
