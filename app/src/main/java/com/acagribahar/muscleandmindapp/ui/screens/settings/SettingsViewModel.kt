@@ -3,6 +3,8 @@ package com.acagribahar.muscleandmindapp.ui.screens.settings
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.acagribahar.muscleandmindapp.data.local.SettingsManager
+import com.acagribahar.muscleandmindapp.data.model.ThemePreference
 import com.acagribahar.muscleandmindapp.data.remote.model.UserPreferences
 import com.acagribahar.muscleandmindapp.data.repository.TaskRepository
 //import com.google.firebase.auth.ktx.auth // Firebase.auth için
@@ -24,13 +26,15 @@ import kotlinx.coroutines.channels.awaitClose // awaitClose için
 data class SettingsUiState(
     val isLoading: Boolean = true,
     val isPremium: Boolean = false,
+    val currentTheme: ThemePreference = ThemePreference.SYSTEM,
     val errorMessage: String? = null
     // Diğer ayarlar buraya eklenebilir (örn: notificationHour)
 )
 
 class SettingsViewModel(
     private val taskRepository: TaskRepository,
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    private val settingsManager: SettingsManager
 
 ) : ViewModel() {
 
@@ -54,6 +58,10 @@ class SettingsViewModel(
     }
 
     init {
+
+        // <<< Başlangıçta mevcut temayı yükle >>>
+        _uiState.update { it.copy(currentTheme = settingsManager.getThemePreference()) }
+
         // callbackFlow ile oluşturduğumuz userStateFlow'u dinle
         userStateFlow
             .onEach { firebaseUser ->
@@ -119,6 +127,12 @@ class SettingsViewModel(
                 }
             }
         } // viewModelScope.launch sonu
+    }
+
+    // <<< Tema tercihini güncelleyen fonksiyon >>>
+    fun updateThemePreference(newPreference: ThemePreference) {
+        settingsManager.saveThemePreference(newPreference) // Kaydet
+        _uiState.update { it.copy(currentTheme = newPreference) } // State'i güncelle
     }
 
     // Çıkış yapma işlevini buraya taşıyabiliriz (veya MainActivity'de kalabilir)

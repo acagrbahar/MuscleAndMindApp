@@ -44,6 +44,8 @@ import androidx.compose.runtime.*
 import androidx.compose.material3.*
 import android.Manifest
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.ui.semantics.Role
+import com.acagribahar.muscleandmindapp.data.model.ThemePreference
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +56,8 @@ fun SettingsScreen(
 ) {
     //val auth: FirebaseAuth = FirebaseAuth.getInstance()
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+    // <<< Tema Seçim Dialog State'i >>>
+    var showThemeDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     // SettingsManager'ı Composable içinde oluşturalım (DI olsa daha iyi olurdu)
     val settingsManager = remember { SettingsManager(context) }
@@ -62,6 +66,18 @@ fun SettingsScreen(
     val initialTime = remember { settingsManager.getNotificationTime() }
     var selectedHour by remember { mutableStateOf(initialTime.first) }
     var selectedMinute by remember { mutableStateOf(initialTime.second) }
+
+    // <<< Tema Seçim Dialog'u >>>
+    if (showThemeDialog) {
+        ThemeSelectionDialog(
+            currentTheme = uiState.currentTheme,
+            onThemeSelected = { newTheme ->
+                settingsViewModel.updateThemePreference(newTheme)
+                showThemeDialog = false // Dialog'u kapat
+            },
+            onDismiss = { showThemeDialog = false } // Kapatma isteği
+        )
+    }
 
     // === Bildirim İzni Kontrolü (Android 13+) ===
     var hasNotificationPermission by remember {
@@ -204,7 +220,23 @@ fun SettingsScreen(
         SettingsSectionCard(title = "Görünüm") {
             SettingItemRow(title = "Dil Seçimi", enabled = false) { Text("Türkçe (Yakında)") }
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) // <<< Daha ince ayıraç
-            SettingItemRow(title = "Tema Seçimi", enabled = false) { Text("Koyu (Yakında)") }
+            SettingItemRow(
+                title = "Tema",
+                onClick = {showThemeDialog = true}
+            ) {
+                // <<< Seçili temayı gösteren Text >>>
+                val themeText = when (uiState.currentTheme) {
+                    ThemePreference.SYSTEM -> "Sistem Varsayılanı"
+                    ThemePreference.LIGHT -> "Açık"
+                    ThemePreference.DARK -> "Koyu"
+                }
+                Text(
+                    text = themeText,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold // Seçimi vurgula
+                )
+
+            }
         } // Görünüm Kartı Sonu
 
         Spacer(modifier = Modifier.weight(1f)) // Butonu en alta it
@@ -288,4 +320,47 @@ private fun SettingItemRow(
             }
         }
     }
+}
+
+// <<< Tema Seçim Dialog Composable'ı >>>
+@Composable
+private fun ThemeSelectionDialog(
+    currentTheme: ThemePreference,
+    onThemeSelected: (ThemePreference) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Tema Seçin") },
+        text = {
+            Column {
+                // Tüm enum değerleri için RadioButton oluştur
+                ThemePreference.entries.forEach { theme ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(role = Role.RadioButton) { onThemeSelected(theme) } // Tıklayınca seçimi yap
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = (theme == currentTheme), // Mevcut tema mı?
+                            onClick = null // Row tıklanabilir olduğu için buna gerek yok
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            when (theme) {
+                                ThemePreference.SYSTEM -> "Sistem Varsayılanı"
+                                ThemePreference.LIGHT -> "Açık"
+                                ThemePreference.DARK -> "Koyu"
+                            }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("İptal") }
+        }
+    )
 }

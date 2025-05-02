@@ -1,4 +1,5 @@
 package com.acagribahar.muscleandmindapp.data.model
 
-class ThemePreference {
+enum class ThemePreference {
+    SYSTEM, LIGHT, DARK
 }

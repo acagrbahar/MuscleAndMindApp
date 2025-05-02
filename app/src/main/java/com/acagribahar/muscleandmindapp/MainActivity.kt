@@ -112,7 +112,7 @@ class MainActivity : ComponentActivity() {
         progressViewModel = ViewModelProvider(this, progressViewModelFactory)[ProgressViewModel::class.java]
 
         // <<< SettingsViewModelFactory başlatmasını güncelle (firebaseAuth'ı geç) >>>
-        settingsViewModelFactory = SettingsViewModelFactory(taskRepository, firebaseAuth)
+        settingsViewModelFactory = SettingsViewModelFactory(taskRepository, firebaseAuth,application)
         settingsViewModel = ViewModelProvider(this, settingsViewModelFactory)[SettingsViewModel::class.java]
 
 
@@ -122,7 +122,11 @@ class MainActivity : ComponentActivity() {
 
 
         setContent {
-            MindMuscleAppTheme {
+            val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+
+            MindMuscleAppTheme(
+                themePreference = settingsState.currentTheme // <<< PARAMETREYİ GEÇ
+            ) {
                 // Üst seviye NavController
                 val navController = rememberNavController()
 
