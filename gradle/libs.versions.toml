@@ -2,6 +2,7 @@
 
 [versions]
 agp = "8.9.2" # Kullandığınız AGP versiyonu (dikkatli değiştirin)
+billingKtx = "7.1.1"
 firebaseBom = "33.13.0" # Firebase BOM versiyonu
 kotlin = "2.0.21" # Kotlin versiyonu (1.9.24'e düşürüldü)
 
@@ -43,6 +44,7 @@ androidx-room-rxjava2 = { module = "androidx.room:room-rxjava2", version.ref = "
 androidx-room-rxjava3 = { module = "androidx.room:room-rxjava3", version.ref = "roomRuntime" }
 androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "roomRuntime" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
+billing-ktx = { module = "com.android.billingclient:billing-ktx", version.ref = "billingKtx" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 # firebase-auth = { module = "com.google.firebase:firebase-auth" } # Kaldırıldı (KTX kullanılıyor)
 firebase-auth-ktx = { module = "com.google.firebase:firebase-auth-ktx" }

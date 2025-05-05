@@ -106,5 +106,7 @@ dependencies {
     // androidTestImplementation(libs.androidx.navigation.testing)
 
     implementation(libs.firebase.crashlytics.ktx)
+    implementation(libs.billing.ktx)
+
 
 }
