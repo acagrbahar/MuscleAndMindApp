@@ -1,11 +1,16 @@
 package com.acagribahar.muscleandmindapp.ui.screens.exercises
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.acagribahar.muscleandmindapp.data.model.DefaultTaskDto
 import com.acagribahar.muscleandmindapp.data.remote.model.UserExercise
 import com.acagribahar.muscleandmindapp.data.repository.TaskRepository
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.channels.awaitClose
@@ -26,9 +31,18 @@ data class ExerciseGroup(
     val exercises: List<DisplayExercise>
 )
 
-class ExercisesViewModel(private val taskRepository: TaskRepository,
-                         private val firebaseAuth: FirebaseAuth
+class ExercisesViewModel(
+    private val taskRepository: TaskRepository,
+    private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "ExercisesViewModel"
+        // <<< Geçiş Reklamı Test Birimi Kimliği >>>
+        private const val INTERSTITIAL_TEST_AD_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"
+        // <<< Gerçek ID'nizi buraya ekleyin (Yayınlamadan önce) >>>
+        // private const val INTERSTITIAL_PROD_AD_UNIT_ID = "ca-app-pub-1292674096792479/9324300564"
+    }
 
     // Gruplanmış egzersiz listesini tutacak StateFlow
     private val _groupedExercises = MutableStateFlow<List<ExerciseGroup>>(emptyList())
@@ -41,25 +55,88 @@ class ExercisesViewModel(private val taskRepository: TaskRepository,
         awaitClose { firebaseAuth.removeAuthStateListener(listener) }
     }
 
+    // <<< YENİ: Premium Durumu StateFlow'u >>>
+    private val _isPremium = MutableStateFlow(false) // Başlangıçta false
+    val isPremium: StateFlow<Boolean> = _isPremium.asStateFlow()
+
+    // <<< YENİ: Yüklenmiş Geçiş Reklamını tutan StateFlow >>>
+    private val _interstitialAd = MutableStateFlow<InterstitialAd?>(null)
+    val interstitialAd: StateFlow<InterstitialAd?> = _interstitialAd.asStateFlow()
+
+
     init {
-        // Kullanıcı durumu değiştikçe egzersizleri yükle/birleştir
+        // Kullanıcı durumu değiştikçe egzersizleri ve premium durumunu yükle
         viewModelScope.launch {
-            userStateFlow.flatMapLatest { firebaseUser -> // Kullanıcı değişirse veya ilk geldiğinde çalışır
+            userStateFlow.collect { firebaseUser ->
                 val userId = firebaseUser?.uid
-                if (userId == null) {
-                    // Kullanıcı yoksa sadece varsayılanları yükle (veya boş liste göster)
-                    Log.d("ExercisesVM", "User is null, loading only default exercises.")
-                    loadAndCombineExercises(null) // Custom exercises için null geç
-                } else {
-                    // Kullanıcı varsa hem varsayılanları hem özelleri yükle
-                    Log.d("ExercisesVM", "User found ($userId), loading default & custom exercises.")
-                    loadAndCombineExercises(userId)
-                }
-            }.collect { combinedGroupedList -> // Birleştirilmiş ve gruplanmış listeyi al
-                _groupedExercises.value = combinedGroupedList // StateFlow'u güncelle
-                Log.d("ExercisesVM", "Updated grouped exercises state.")
+                // Premium durumunu yükle/güncelle
+                loadUserPremiumStatus(userId)
+                // Egzersizleri yükle/birleştir (bu zaten flatMapLatest ile tetiklenmeli, tekrar kontrol edelim)
+                // loadAndCombineExercises(userId) // Bu flatMapLatest içinde zaten var, tekrar çağırmaya gerek yok
+                Log.d(TAG, "User state changed: $userId. Premium status loading initiated. Exercise flow will update.")
             }
         }
+
+        // <<< flatMapLatest ile egzersizleri ve premium durumunu birleştirelim (daha temiz) >>>
+        // Bu, groupedExercises'i doğrudan oluşturur ve kullanıcı değişimine tepki verir.
+        viewModelScope.launch {
+            userStateFlow.flatMapLatest { firebaseUser ->
+                val userId = firebaseUser?.uid
+                Log.d(TAG, "User state changed for exercise loading: $userId")
+                loadAndCombineExercises(userId) // Bu Flow<List<ExerciseGroup>> döndürür
+            }.collect { combinedGroupedList ->
+                _groupedExercises.value = combinedGroupedList
+                Log.d(TAG, "Updated grouped exercises state via flatMapLatest.")
+            }
+        }
+
+    } // init sonu
+
+    // <<< YENİ: Premium durumunu yükleyen fonksiyon >>>
+    private fun loadUserPremiumStatus(userId: String?) {
+        if (userId == null) {
+            _isPremium.value = false
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val prefs = taskRepository.getUserPreferences(userId)
+                _isPremium.value = prefs?.isPremium ?: false
+                Log.d(TAG, "Premium status loaded for $userId: ${isPremium.value}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading premium status for $userId", e)
+                _isPremium.value = false
+            }
+        }
+    }
+
+    // <<< YENİ: Geçiş reklamını yükleyen fonksiyon >>>
+    fun loadInterstitialAd(context: Context) {
+        // Zaten yüklü bir reklam varsa veya yükleniyorsa tekrar yükleme (opsiyonel)
+        // if (_interstitialAd.value != null) return
+
+        Log.d(TAG, "Attempting to load Interstitial Ad...")
+        val adRequest = AdRequest.Builder().build()
+        InterstitialAd.load(context, INTERSTITIAL_TEST_AD_UNIT_ID, adRequest, // <<< TEST ID'si KULLAN
+            object : InterstitialAdLoadCallback() {
+                override fun onAdFailedToLoad(adError: LoadAdError) {
+                    Log.e(TAG, "Interstitial Ad failed to load: ${adError.message} (Code: ${adError.code})")
+                    _interstitialAd.value = null // Hata durumunda null yap
+                }
+
+                override fun onAdLoaded(loadedAd: InterstitialAd) {
+                    Log.d(TAG, "Interstitial Ad loaded successfully.")
+                    _interstitialAd.value = loadedAd // Yüklenen reklamı state'e ata
+                }
+            })
+    }
+
+    // <<< YENİ: Reklam gösterildikten sonra state'i temizleyen fonksiyon >>>
+    fun interstitialAdShown() {
+        _interstitialAd.value = null
+        Log.d(TAG, "Interstitial Ad state cleared.")
+        // İsteğe bağlı: Bir sonraki reklamı hemen yüklemeye başlayabiliriz
+        // loadInterstitialAd(applicationContext) // Application context lazım olurdu
     }
 
     // Hem varsayılan hem de özel egzersizleri alıp birleştiren Flow döndüren fonksiyon

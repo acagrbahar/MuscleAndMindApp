@@ -45,6 +45,98 @@
     "type": "mind",
     "title": "Minnet Günlüğü",
     "description": "Bugün minnettar olduğunuz 3 şeyi yazın."
+  },
+  {
+    "type": "mind",
+    "title": "Dinlenme",
+    "description": "Sadece odaklanın ve dinlenin."
+  },
+  {
+    "type": "body",
+    "category": "Kol",
+    "title": "Kol",
+    "description": "Uygun ağırlıktaki dumbellar kullanılarak 3x12 tekrar yapın."
+  },
+  {
+    "type": "body",
+    "category": "Kardiyo",
+    "title": "Mountain Climber (Dağ Tırmanışı)",
+    "description": "Şınav pozisyonunda başlayıp dizleri sırayla ve hızlı bir şekilde göğse doğru çekme. Tüm vücut ve kardiyo egzersizidir."
+  },
+  {
+    "type": "body",
+    "category": "Kardiyo",
+    "title": "High Knees (Diz Çekme)",
+    "description": "Yerinde koşar gibi yaparken dizleri mümkün olduğunca yükseğe (kalça hizasına) çekme. Hızlı tempo ile yapılır."
+  },
+  {
+    "type": "body",
+    "category": "Kol",
+    "title": "Triceps Dip (Bench Dip)",
+    "description": "Sağlam bir sandalye veya sehpaya sırtınız dönük şekilde ellerinizi kenara koyun, ayaklar ileride. Dirsekleri bükerek vücudu indirip kaldırın. Arka kol (triceps) kasları içindir."
+  },
+  {
+    "type": "body",
+    "category": "Omuz",
+    "title": "Pike Push-up",
+    "description": "Şınav pozisyonu alınır, kalça yukarı kaldırılır (V şeklinde). Baş yere değecekmiş gibi kollar bükülerek alçalınır ve itilir. Omuz ve triceps kaslarını hedefler."
+  },
+
+  {
+    "type": "body",
+    "category": "Karın",
+    "title": "Side Plank (Yan Plank)",
+    "description": "Yan yatar pozisyonda tek dirsek ve ayak kenarı üzerinde vücudu düz bir çizgide tutma. Yan karın (oblik) kaslarını güçlendirir. Her iki taraf için yapılır."
+  },
+  {
+    "type": "body",
+    "category": "Karın",
+    "title": "Leg Raise (Bacak Kaldırma)",
+    "description": "Sırtüstü yatarken bacakları düz veya hafif bükülü şekilde yavaşça yukarı kaldırıp indirme. Alt karın kasları için etkilidir."
+  },
+  {
+    "type": "body",
+    "category": "Karın",
+    "title": "Crunch (Mekik)",
+    "description": "Sırtüstü yere yatıp dizler bükülüyken üst gövdeyi kürek kemikleri yerden kalkacak kadar kaldırma. Üst karın kasları hedeflenir."
+  },
+  {
+    "type": "body",
+    "category": "Bacak",
+    "title": "Glute Bridge (Kalça Köprüsü)",
+    "description": "Sırtüstü yere yatıp dizler bükülü şekilde ayak tabanları yerdeyken kalçayı yukarı kaldırma. Kalça ve arka bacak kaslarını çalıştırır."
+  },
+  {
+    "type": "mind",
+    "title": "Beden Tarama Meditasyonu",
+    "description": "Rahatça oturun veya uzanın. Dikkatinizi yavaşça ayak parmaklarınızdan başlayarak başınızın tepesine kadar vücudunuzun her bölgesine getirin, hisleri yargılamadan fark edin. (5-10 dakika)"
+  },
+  {
+    "type": "mind",
+    "title": "Farkındalıkla Gözlem",
+    "description": "Yakınınızdaki bir nesneyi (kalem, yaprak, bulut vb.) seçin. Birkaç dakika boyunca tüm dikkatinizle rengini, dokusunu, şeklini ve diğer detaylarını inceleyin."
+  },
+  {
+    "type": "mind",
+    "title": "Farkındalıkla Dinleme",
+    "description": "Gözlerinizi kapatın veya yumuşakça bir noktaya odaklanın. Birkaç dakika boyunca sadece çevrenizdeki sesleri (yakın, uzak, sürekli, anlık) duymaya odaklanın. Sesleri etiketlemeden veya yargılamadan sadece fark edin."
+  },
+  {
+    "type": "mind",
+    "title": "5-4-3-2-1 Tekniği",
+    "description": "Stresli hissettiğinizde uygulayın: Gördüğünüz 5, dokunduğunuz 4, duyduğunuz 3, kokladığınız 2 ve tadabildiğiniz 1 şeyi fark edin. Anda kalmaya yardımcı olur."
+  },
+  {
+    "type": "mind",
+    "title": "Şefkat Meditasyonu",
+    "description": "Kendinize ve başkalarına iyi dileklerde bulunun: 'İyi olayım/olasın, mutlu olayım/olasın, sağlıklı olayım/olasın, huzurlu olayım/olasın.' (5 dakika)"
+  },
+  {
+    "type": "body",
+    "category": "Sırt",
+    "title": "Bird Dog",
+    "description": "Dört ayak pozisyonunda (eller omuzların, dizler kalçaların altında) dengenizi koruyarak sağ kolu ileri, sol bacağı geri uzatma ve sonra taraf değiştirme."
   }
+
 
 ]

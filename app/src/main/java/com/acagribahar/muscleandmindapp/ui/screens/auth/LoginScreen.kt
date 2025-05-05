@@ -1,13 +1,25 @@
 package com.acagribahar.muscleandmindapp.ui.screens.auth
 
-import android.widget.Toast // Hata mesajları için Toast kullanabiliriz
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState // Kaydırma için
+import androidx.compose.foundation.text.KeyboardOptions // Klavye tipi için
+import androidx.compose.foundation.verticalScroll // Kaydırma için
+import androidx.compose.material.icons.Icons // İkonlar için
+import androidx.compose.material.icons.filled.Visibility // Şifre görünürlük ikonları
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.Email // Email ikonu
+import androidx.compose.material.icons.outlined.Lock // Kilit ikonu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable // Şifre görünürlük durumunu kaydetmek için
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext // Toast için Context
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType // Klavye tipi
+import androidx.compose.ui.text.input.PasswordVisualTransformation // Şifre gizleme
+import androidx.compose.ui.text.input.VisualTransformation // Şifre gösterme
+import androidx.compose.ui.text.style.TextAlign // Metin hizalama
 import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.FirebaseAuth
 
@@ -16,94 +28,145 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit,
     navigateToRegister: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
+    var email by rememberSaveable { mutableStateOf("") } // rememberSaveable state'i korur
+    var password by rememberSaveable { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) } // Şifre görünürlük state'i
+    var isLoading by remember { mutableStateOf(false) } // Yüklenme durumu - remember yeterli
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    val context = LocalContext.current // Toast göstermek için
+    val context = LocalContext.current
+    val auth: FirebaseAuth = remember { FirebaseAuth.getInstance() } // remember içinde instance alalım
 
-    // Firebase Auth instance'ını alalım
-    val auth: FirebaseAuth = FirebaseAuth.getInstance()
-
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+    // Ana tema arka planını uygula ve kaydırma ekle
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        Text("Giriş Yap", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(24.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp) // Yan boşlukları artır
+                // Dikey kaydırma ekle (küçük ekranlarda taşmayı önler)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.Center, // İçeriği dikeyde ortala
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
 
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("E-posta") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading // Yüklenirken pasif
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Şifre") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading // Yüklenirken pasif
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        errorMessage?.let {
+            // <<< Logo veya Uygulama Adı Alanı (Placeholder) >>>
+            // Buraya bir Image veya stilize edilmiş Text eklenebilir
             Text(
-                text = it,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(bottom = 8.dp)
+                text = "Mind & Muscle", // Örnek Uygulama Adı
+                style = MaterialTheme.typography.displaySmall, // Daha büyük bir stil
+                modifier = Modifier.padding(bottom = 48.dp) // Altına daha fazla boşluk
             )
-        }
 
-        if (isLoading) {
-            CircularProgressIndicator(modifier = Modifier.padding(bottom = 8.dp))
-        }
+            Text(
+                "Giriş Yap",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
 
-        // Giriş Butonu onClick Güncellemesi
-        Button(
-            onClick = {
-                // Basit Kontrol
-                if (email.isBlank() || password.isBlank()) {
-                    errorMessage = "E-posta ve şifre boş olamaz."
-                    return@Button
-                }
+            // E-posta Giriş Alanı (İkonlu)
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("E-posta") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading,
+                leadingIcon = { // <<< Başa ikon ekle >>>
+                    Icon(Icons.Outlined.Email, contentDescription = "E-posta ikonu")
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email) // <<< Klavye tipini ayarla >>>
+            )
+            Spacer(modifier = Modifier.height(16.dp)) // <<< Boşluğu artır >>>
 
-                isLoading = true
-                errorMessage = null
+            // Şifre Giriş Alanı (İkonlu ve Görünürlük Butonlu)
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Şifre") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading,
+                leadingIcon = { // <<< Başa ikon ekle >>>
+                    Icon(Icons.Outlined.Lock, contentDescription = "Şifre ikonu")
+                },
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(), // <<< Görünürlüğü state'e bağla >>>
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), // <<< Klavye tipini ayarla >>>
+                trailingIcon = { // <<< Sona ikon ekle (görünürlük için) >>>
+                    val image = if (passwordVisible)
+                        Icons.Filled.Visibility
+                    else Icons.Filled.VisibilityOff
+                    val description = if (passwordVisible) "Şifreyi Gizle" else "Şifreyi Göster"
 
-                auth.signInWithEmailAndPassword(email.trim(), password.trim())
-                    .addOnCompleteListener { task ->
-                        isLoading = false // İşlem bitti, yüklenmeyi durdur
-                        if (task.isSuccessful) {
-                            // Giriş başarılı! Navigasyonu tetikle.
-                            Toast.makeText(context, "Giriş başarılı!", Toast.LENGTH_SHORT).show()
-                            onLoginSuccess()
-                        } else {
-                            // Giriş başarısız. Hata mesajını göster.
-                            errorMessage = task.exception?.localizedMessage ?: "Bilinmeyen bir hata oluştu."
-                            // Toast.makeText(context, "Giriş başarısız: ${errorMessage}", Toast.LENGTH_LONG).show()
-                        }
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) { // <<< Tıklayınca state'i değiştir >>>
+                        Icon(imageVector = image, description)
                     }
-            },
-            enabled = !isLoading,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Giriş Yap")
-        }
-        Spacer(modifier = Modifier.height(8.dp))
+                }
+            )
+            Spacer(modifier = Modifier.height(24.dp)) // <<< Boşluğu artır >>>
 
-        TextButton(
-            onClick = navigateToRegister,
-            enabled = !isLoading
-        ) {
-            Text("Hesabım Yok (Kayıt Ol)")
+            // Hata Mesajı Alanı
+            if (errorMessage != null) { // <<< Hata varsa göster (Box ile yükseklik ayarı) >>>
+                Box(modifier = Modifier.height(40.dp)) { // Hata mesajı yokken boşluk kaplamasın diye
+                    Text(
+                        text = errorMessage ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 8.dp).align(Alignment.Center)
+                    )
+                }
+            } else {
+                // Hata yoksa da aynı boşluğu koru (opsiyonel, hizalama için)
+                Spacer(modifier = Modifier.height(40.dp))
+            }
+
+
+            // Giriş Butonu
+            Button(
+                onClick = {
+                    if (email.isBlank() || password.isBlank()) {
+                        errorMessage = "E-posta ve şifre boş olamaz."
+                        return@Button
+                    }
+                    isLoading = true; errorMessage = null
+                    auth.signInWithEmailAndPassword(email.trim(), password.trim())
+                        .addOnCompleteListener { task ->
+                            isLoading = false
+                            if (task.isSuccessful) {
+                                Toast.makeText(context, "Giriş başarılı!", Toast.LENGTH_SHORT).show()
+                                onLoginSuccess()
+                            } else {
+                                errorMessage = task.exception?.localizedMessage ?: "Bilinmeyen bir hata oluştu."
+                            }
+                        }
+                },
+                enabled = !isLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp), // <<< Buton yüksekliğini ayarla >>>
+                shape = MaterialTheme.shapes.medium // <<< Köşe yuvarlaklığı (veya large/extraLarge)
+            ) {
+                if (isLoading) { // <<< Yüklenme göstergesini buton içine al >>>
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary, // Buton üzerindeki renk
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Giriş Yap")
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp)) // <<< Boşluğu artır >>>
+
+            // Kayıt Ekranına Gitme Butonu
+            TextButton(
+                onClick = navigateToRegister,
+                enabled = !isLoading
+            ) {
+                Text("Hesabım Yok (Kayıt Ol)")
+            }
+            Spacer(modifier = Modifier.height(24.dp)) // <<< Alt boşluk ekle >>>
         }
     }
 }

@@ -27,6 +27,7 @@ data class SettingsUiState(
     val isLoading: Boolean = true,
     val isPremium: Boolean = false,
     val currentTheme: ThemePreference = ThemePreference.SYSTEM,
+    val notificationsEnabled: Boolean = SettingsManager.DEFAULT_NOTIFICATIONS_ENABLED, // <<< Bildirim durumu eklendi
     val errorMessage: String? = null
     // Diğer ayarlar buraya eklenebilir (örn: notificationHour)
 )
@@ -60,7 +61,10 @@ class SettingsViewModel(
     init {
 
         // <<< Başlangıçta mevcut temayı yükle >>>
-        _uiState.update { it.copy(currentTheme = settingsManager.getThemePreference()) }
+        _uiState.update { it.copy(currentTheme = settingsManager.getThemePreference(),
+            notificationsEnabled = settingsManager.getNotificationsEnabled()
+
+        ) }
 
         // callbackFlow ile oluşturduğumuz userStateFlow'u dinle
         userStateFlow
@@ -89,12 +93,17 @@ class SettingsViewModel(
 
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch { // Tekrar launch açmak daha güvenli olabilir
+            var finalPrefs: UserPreferences? = null // prefs değişkenini try dışında tanımla
+
             try {
                 Log.d("SettingsViewModel", "Calling taskRepository.getUserPreferences for $userId")
 
                 var prefs = taskRepository.getUserPreferences(userId)
 
                 Log.d("SettingsViewModel", "Prefs fetched for $userId: $prefs")
+
+                finalPrefs = taskRepository.getUserPreferences(userId)
+
 
                 if (prefs == null) {
                     Log.d("SettingsViewModel", "Preferences not found for $userId, attempting to create default...")
@@ -133,6 +142,13 @@ class SettingsViewModel(
     fun updateThemePreference(newPreference: ThemePreference) {
         settingsManager.saveThemePreference(newPreference) // Kaydet
         _uiState.update { it.copy(currentTheme = newPreference) } // State'i güncelle
+    }
+
+    // <<< YENİ: Bildirim etkinleştirme durumunu güncelleyen fonksiyon >>>
+    fun updateNotificationsEnabled(enabled: Boolean) {
+        settingsManager.saveNotificationsEnabled(enabled) // Ayarı SharedPreferences'a kaydet
+        _uiState.update { it.copy(notificationsEnabled = enabled) } // UI State'ini güncelle
+        Log.d("SettingsViewModel", "Notification enabled status updated to: $enabled") // Loglama
     }
 
     // Çıkış yapma işlevini buraya taşıyabiliriz (veya MainActivity'de kalabilir)

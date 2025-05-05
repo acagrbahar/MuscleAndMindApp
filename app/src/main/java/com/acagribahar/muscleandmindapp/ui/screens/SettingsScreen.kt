@@ -1,95 +1,73 @@
 package com.acagribahar.muscleandmindapp.ui.screens
 
+import android.Manifest
 import android.app.TimePickerDialog
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-//import androidx.navigation.NavHostController
-//import com.acagribahar.muscleandmindapp.navigation.Screen.Graph // Rota sabitleri için import
-//import com.google.firebase.auth.FirebaseAuth
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.acagribahar.muscleandmindapp.ui.screens.settings.SettingsViewModel
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.acagribahar.muscleandmindapp.MindMuscleApplication
 import com.acagribahar.muscleandmindapp.data.local.SettingsManager
-import java.util.Calendar
-import androidx.compose.runtime.*
-import androidx.compose.material3.*
-import android.Manifest
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.ui.semantics.Role
 import com.acagribahar.muscleandmindapp.data.model.ThemePreference
+import com.acagribahar.muscleandmindapp.ui.screens.settings.SettingsUiState
+import com.acagribahar.muscleandmindapp.ui.screens.settings.SettingsViewModel
+import java.util.Calendar
+import com.google.firebase.appcheck.interop.BuildConfig
+
+
+// Not: NavHostController ve Graph importları kaldırıldı, çünkü bu ekranda kullanılmıyorlar.
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     settingsViewModel: SettingsViewModel,
     onLogout: () -> Unit
-
 ) {
-    //val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    // State'ler ve Context (Değişiklik yok)
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
-    // <<< Tema Seçim Dialog State'i >>>
     var showThemeDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    // SettingsManager'ı Composable içinde oluşturalım (DI olsa daha iyi olurdu)
     val settingsManager = remember { SettingsManager(context) }
-
-    // Kaydedilmiş veya varsayılan saati al
     val initialTime = remember { settingsManager.getNotificationTime() }
     var selectedHour by remember { mutableStateOf(initialTime.first) }
     var selectedMinute by remember { mutableStateOf(initialTime.second) }
+    val appVersion = BuildConfig.VERSION_NAME
 
-    // <<< Tema Seçim Dialog'u >>>
-    if (showThemeDialog) {
-        ThemeSelectionDialog(
-            currentTheme = uiState.currentTheme,
-            onThemeSelected = { newTheme ->
-                settingsViewModel.updateThemePreference(newTheme)
-                showThemeDialog = false // Dialog'u kapat
-            },
-            onDismiss = { showThemeDialog = false } // Kapatma isteği
-        )
-    }
+    val uriHandler = LocalUriHandler.current
 
-    // === Bildirim İzni Kontrolü (Android 13+) ===
     var hasNotificationPermission by remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             mutableStateOf(
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
             )
         } else {
-            mutableStateOf(true) // Eski sürümlerde izin otomatik var
+            mutableStateOf(true)
         }
     }
-
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
@@ -99,184 +77,277 @@ fun SettingsScreen(
             }
         }
     )
-    // === İzin Kontrolü Sonu ===
-
-    // Time Picker Dialog'u göstermek için state
     var showTimePicker by remember { mutableStateOf(false) }
 
-    // Time Picker Dialog oluşturucu
+    // Dialoglar (Değişiklik yok)
+    if (showThemeDialog) {
+        ThemeSelectionDialog(
+            currentTheme = uiState.currentTheme,
+            onThemeSelected = { newTheme ->
+                settingsViewModel.updateThemePreference(newTheme)
+                showThemeDialog = false
+            },
+            onDismiss = { showThemeDialog = false }
+        )
+    }
     if (showTimePicker) {
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.HOUR_OF_DAY, selectedHour)
-        calendar.set(Calendar.MINUTE, selectedMinute)
-
-        TimePickerDialog(
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, selectedHour)
+            set(Calendar.MINUTE, selectedMinute)
+        }
+        val timePickerDialog = TimePickerDialog(
             context,
             { _, hourOfDay, minute ->
-                // Saat seçildiğinde:
                 selectedHour = hourOfDay
                 selectedMinute = minute
-                settingsManager.saveNotificationTime(hourOfDay, minute) // Tercihi kaydet
-                // WorkManager'ı yeniden planla
+                settingsManager.saveNotificationTime(hourOfDay, minute)
                 try {
-                    (context.applicationContext as MindMuscleApplication).scheduleDailyReminder() // Application üzerinden çağır
+                    (context.applicationContext as MindMuscleApplication).scheduleDailyReminder()
                     Toast.makeText(context, "Hatırlatıcı $hourOfDay:${"%02d".format(minute)} olarak ayarlandı.", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Log.e("SettingsScreen", "Reschedule failed", e)
                     Toast.makeText(context, "Hatırlatıcı ayarlanırken hata oluştu.", Toast.LENGTH_SHORT).show()
                 }
-                showTimePicker = false // Dialog'u kapat
+                showTimePicker = false
             },
             selectedHour,
             selectedMinute,
             true // 24 saat formatı
-        ).show()
-        // Dialog kapatıldığında state'i false yapalım ki tekrar açılmasın
-        DisposableEffect(Unit) { onDispose { showTimePicker = false } }
+        )
+        // Dialog'un dismiss edilmesini dinle (opsiyonel ama iyi pratik)
+        DisposableEffect(Unit) {
+            onDispose {
+                if (timePickerDialog.isShowing) {
+                    // Eğer kullanıcı dışarı tıklayarak kapattıysa state'i güncelle
+                    showTimePicker = false
+                }
+            }
+        }
+        timePickerDialog.show()
     }
 
 
+    // --- DÜZENLENMİŞ LAYOUT YAPISI (Box Kullanarak) ---
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(16.dp) // Genel kenar boşluğu Box'a uygulandı
     ) {
-        Text("Ayarlar", style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 16.dp) // Başlığı ortala
-        )
+        // --- Ayarlar İçeriği (Başlık ve Kartlar) için Column ---
+        Column(
+            modifier = Modifier
+                .weight(1f).verticalScroll(rememberScrollState()) // <<< Box'ın üstüne hizala
+        ) {
+            Text(
+                "Ayarlar",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 16.dp)
+            )
 
-        // --- Hesap Bölümü ---
-        SettingsSectionCard(title = "Hesap") {
-            if (uiState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.padding(vertical = 16.dp).align(Alignment.CenterHorizontally))
-            } else if (uiState.errorMessage != null) {
-                Text("Hata: ${uiState.errorMessage}", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical=16.dp))
-            } else {
-                // Hesap Durumu Satırı
-                SettingItemRow(title = "Hesap Durumu") {
-                    Text(
-                        if (uiState.isPremium) "Premium Üye ✨" else "Ücretsiz Kullanıcı",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                // Premium Butonu/Mesajı
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { // Butonu ortala
-                    if (!uiState.isPremium) {
-                        Button(onClick = { Toast.makeText(context, "Premium'a geçiş yakında!", Toast.LENGTH_SHORT).show() }, modifier = Modifier.padding(top = 8.dp)) {
-                            Text("Premium'a Geç")
+            // --- Hesap Bölümü ---
+            SettingsSectionCard(title = "Hesap") {
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.padding(vertical = 16.dp).align(Alignment.CenterHorizontally))
+                } else if (uiState.errorMessage != null) {
+                    Text("Hata: ${uiState.errorMessage}", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 16.dp))
+                } else {
+                    SettingItemRow(title = "Hesap Durumu") {
+                        Text(
+                            if (uiState.isPremium) "Premium Üye ✨" else "Ücretsiz Kullanıcı",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                        if (!uiState.isPremium) {
+                            Button(onClick = { Toast.makeText(context, "Premium'a geçiş yakında!", Toast.LENGTH_SHORT).show() }, modifier = Modifier.padding(top = 8.dp)) {
+                                Text("Premium'a Geç")
+                            }
+                        } else {
+                            Text("Tüm premium özellikler aktif!", modifier = Modifier.padding(vertical = 8.dp))
                         }
-                    } else {
-                        Text("Tüm premium özellikler aktif!", modifier = Modifier.padding(vertical = 8.dp))
                     }
                 }
             }
-        } // Hesap Kartı Sonu
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // --- Bildirimler Bölümü ---
-        SettingsSectionCard(title = "Bildirimler") {
-            // İzin isteme (gerekiyorsa)
-            if (!hasNotificationPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                OutlinedButton(
-                    onClick = { permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
-                    modifier = Modifier.fillMaxWidth() // Genişliği doldur
+            // --- Bildirimler Bölümü ---
+            SettingsSectionCard(title = "Bildirimler") {
+                if (!hasNotificationPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    OutlinedButton(
+                        onClick = { permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Bildirim İzni Ver")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                SettingItemRow(
+                    title = "Günlük Hatırlatıcı",
+                    enabled = hasNotificationPermission
                 ) {
-                    Text("Bildirim İzni Ver")
+                    Switch(
+                        checked = uiState.notificationsEnabled,
+                        onCheckedChange = { newValue ->
+                            settingsViewModel.updateNotificationsEnabled(newValue)
+                            // Schedule/Cancel reminder immediately
+                            try { (context.applicationContext as MindMuscleApplication).scheduleDailyReminder() } catch (e: Exception) {Log.e("SettingsScreen", "Reschedule failed on toggle", e)}
+                        },
+                        enabled = hasNotificationPermission
+                    )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                SettingItemRow(
+                    title = "Hatırlatma Saati",
+                    enabled = hasNotificationPermission && uiState.notificationsEnabled,
+                    onClick = {
+                        if (hasNotificationPermission && uiState.notificationsEnabled) { showTimePicker = true }
+                        else if (!hasNotificationPermission) { Toast.makeText(context, "Lütfen önce bildirim izni verin.", Toast.LENGTH_SHORT).show() }
+                        else { Toast.makeText(context, "Önce bildirimleri açın.", Toast.LENGTH_SHORT).show() }
+                    }
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "%02d:%02d".format(selectedHour, selectedMinute),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Saati Değiştir",
+                            modifier = Modifier.size(20.dp),
+                            tint = LocalContentColor.current
+                        )
+                    }
+                }
             }
-            // Saat Ayarı Satırı
-            SettingItemRow(
-                title = "Günlük Hatırlatma",
-                enabled = hasNotificationPermission,
-                onClick = {
-                    if (hasNotificationPermission) { showTimePicker = true }
-                    else { Toast.makeText(context, "Lütfen önce bildirim izni verin.", Toast.LENGTH_SHORT).show() }
-                }
-            ) {
-                // Saati ve Düzenle İkonunu göster
-                Row(verticalAlignment = Alignment.CenterVertically) {
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // --- Görünüm Bölümü ---
+            SettingsSectionCard(title = "Görünüm") {
+                SettingItemRow(title = "Dil Seçimi", enabled = false) { Text("Türkçe (Yakında)") }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                SettingItemRow(
+                    title = "Tema",
+                    onClick = { showThemeDialog = true }
+                ) {
+                    val themeText = when (uiState.currentTheme) {
+                        ThemePreference.SYSTEM -> "Sistem Varsayılanı"
+                        ThemePreference.LIGHT -> "Açık"
+                        ThemePreference.DARK -> "Koyu"
+                    }
                     Text(
-                        text = "%02d:%02d".format(selectedHour, selectedMinute),
+                        text = themeText,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        imageVector = Icons.Default.Edit, // <<< Düzenle ikonu
-                        contentDescription = "Saati Değiştir",
-                        modifier = Modifier.size(20.dp),
-                        tint = LocalContentColor.current // enabled durumuna göre rengi ayarlanacak
-                    )
                 }
             }
-        } // Bildirim Kartı Sonu
-        Spacer(modifier = Modifier.height(16.dp))
 
-        // --- Görünüm Bölümü (Placeholder) ---
-        SettingsSectionCard(title = "Görünüm") {
-            SettingItemRow(title = "Dil Seçimi", enabled = false) { Text("Türkçe (Yakında)") }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) // <<< Daha ince ayıraç
-            SettingItemRow(
-                title = "Tema",
-                onClick = {showThemeDialog = true}
+            // --- YENİ BÖLÜM: Hakkında ve Yasal ---
+            SettingsSectionCard(title = "Hakkında ve Yasal") {
+                // Gizlilik Politikası Satırı
+                SettingItemRow(
+                    title = "Gizlilik Politikası",
+                    onClick = {
+                        // <<< Yer tutucu URL'yi kendi URL'nizle değiştirin >>>
+                        val privacyUrl = "https://yourdomain.com/privacy" // ÖRNEK URL
+                        try { uriHandler.openUri(privacyUrl) } catch (e: Exception) {
+                            Log.e("SettingsScreen", "Could not open privacy policy URL", e)
+                            Toast.makeText(context, "Link açılamadı.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) {
+                    Icon(Icons.Default.ChevronRight, contentDescription = "Git")
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // Kullanım Koşulları Satırı
+                SettingItemRow(
+                    title = "Kullanım Koşulları",
+                    onClick = {
+                        // <<< Yer tutucu URL'yi kendi URL'nizle değiştirin >>>
+                        val termsUrl = "https://yourdomain.com/terms" // ÖRNEK URL
+                        try { uriHandler.openUri(termsUrl) } catch (e: Exception) {
+                            Log.e("SettingsScreen", "Could not open terms URL", e)
+                            Toast.makeText(context, "Link açılamadı.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) {
+                    Icon(Icons.Default.ChevronRight, contentDescription = "Git")
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // Uygulamayı Değerlendir Satırı (Opsiyonel)
+                SettingItemRow(
+                    title = "Uygulamayı Değerlendir",
+                    onClick = {
+                        val packageName = context.packageName
+                        val playStoreUrl = "market://details?id=$packageName"
+                        val webUrl = "https://play.google.com/store/apps/details?id=$packageName"
+                        try {
+                            // Önce Play Store uygulamasını açmayı dene
+                            uriHandler.openUri(playStoreUrl)
+                        } catch (e: Exception) {
+                            // Play Store yoksa web sayfasını açmayı dene
+                            Log.w("SettingsScreen", "Play Store app not found, trying web URL", e)
+                            try { uriHandler.openUri(webUrl) } catch (e2: Exception) {
+                                Log.e("SettingsScreen", "Could not open Play Store URL", e2)
+                                Toast.makeText(context, "Play Store linki açılamadı.", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                ) {
+                    Icon(Icons.Default.ChevronRight, contentDescription = "Git")
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // Uygulama Versiyonu Satırı
+                SettingItemRow(title = "Versiyon", enabled = false) { // Tıklanamaz
+                    Text(appVersion, fontWeight = FontWeight.Bold) // Versiyonu göster
+                }
+            } // Hakkında Kartı Sonu
+        } // --- Ayarlar İçeriği Column Sonu ---
+
+
+        // --- Çıkış Yap Butonu (Box'ın altına hizalı) ---
+        // <<< Butonu sarmalayan Box ve align modifier'ı >>>
+
+            Button(
+                onClick = onLogout,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.fillMaxWidth() // Buton genişliği doldursun
             ) {
-                // <<< Seçili temayı gösteren Text >>>
-                val themeText = when (uiState.currentTheme) {
-                    ThemePreference.SYSTEM -> "Sistem Varsayılanı"
-                    ThemePreference.LIGHT -> "Açık"
-                    ThemePreference.DARK -> "Koyu"
-                }
-                Text(
-                    text = themeText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold // Seçimi vurgula
-                )
-
+                Text("Çıkış Yap")
             }
-        } // Görünüm Kartı Sonu
+        } // --- Çıkış Yap Butonu Box Sonu ---
 
-        Spacer(modifier = Modifier.weight(1f)) // Butonu en alta it
-
-        // Çıkış Yap Butonu
-        Button(
-            onClick = onLogout,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-        ) {
-            Text("Çıkış Yap")
-        }
+    } // <<< Ana Box Sonu >>>
 
 
 
+// --- Yardımcı Composable Fonksiyonlar ---
 
-
-    }
-
-}
-
-// SettingsScreen fonksiyonunun DIŞINA, dosyanın altına ekleyin:
-
-// Ayarlar ekranındaki bölümleri sarmalamak için yardımcı Composable
 @Composable
 private fun SettingsSectionCard(
-    modifier: Modifier = Modifier, // Dışarıdan modifier alabilmesi için
+    modifier: Modifier = Modifier,
     title: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(modifier = modifier) { // Dış modifier'ı uygula
+    Column(modifier = modifier) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp) // Başlığa hafif sol padding
+            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
         )
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(16.dp),
-                content = content // Kart içeriğini buraya yerleştir
+                content = content
             )
         }
     }
@@ -295,34 +366,29 @@ private fun SettingItemRow(
     } else {
         modifier
     }
-    // Tıklanamazsa içeriği soluklaştır
-    // Eski Material kütüphanelerinden kalma, M3'te LocalContentColor'u manipüle etmek daha iyi:
     val currentContentColor = LocalContentColor.current
-    val contentColor = if (enabled) currentContentColor else currentContentColor.copy(alpha = 0.38f) // Disabled alpha
+    val contentColor = if (enabled) currentContentColor else currentContentColor.copy(alpha = 0.38f)
 
     Row(
         modifier = clickModifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp), // Satırlar arası dikey boşluk
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Sol taraf (Başlık)
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
-            color = contentColor // Soluklaştırma için renk
+            color = contentColor
         )
-        // Sağ taraf (Değer/Kontrol) - Alfa/Renk ayarı için Provider
         CompositionLocalProvider(LocalContentColor provides contentColor) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                content() // Sağ taraftaki içeriği çiz
+                content()
             }
         }
     }
 }
 
-// <<< Tema Seçim Dialog Composable'ı >>>
 @Composable
 private fun ThemeSelectionDialog(
     currentTheme: ThemePreference,
@@ -334,18 +400,17 @@ private fun ThemeSelectionDialog(
         title = { Text("Tema Seçin") },
         text = {
             Column {
-                // Tüm enum değerleri için RadioButton oluştur
                 ThemePreference.entries.forEach { theme ->
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clickable(role = Role.RadioButton) { onThemeSelected(theme) } // Tıklayınca seçimi yap
+                            .clickable(role = Role.RadioButton) { onThemeSelected(theme) }
                             .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
-                            selected = (theme == currentTheme), // Mevcut tema mı?
-                            onClick = null // Row tıklanabilir olduğu için buna gerek yok
+                            selected = (theme == currentTheme),
+                            onClick = null
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(

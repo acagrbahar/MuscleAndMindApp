@@ -100,6 +100,18 @@ class TaskRepositoryImpl(
         }
     }
 
+    override suspend fun deleteAllTasks() {
+        // IO Dispatcher üzerinde çalıştırılması iyi bir pratiktir
+        withContext(Dispatchers.IO) {
+            try {
+                taskDao.deleteAllTasks() // DAO'daki fonksiyonu çağır
+                Log.d("Repository", "All tasks deleted from Room.")
+            } catch (e: Exception) {
+                Log.e("Repository", "Error deleting all tasks from Room", e)
+            }
+        }
+    }
+
     override suspend fun updateUserPremiumStatus(userId: String, isPremium: Boolean) {
         try {
             // Belirtilen userId'ye sahip dokümanın 'isPremium' alanını güncelle

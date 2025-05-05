@@ -20,6 +20,7 @@ interface TaskRepository {
     suspend fun loadDefaultTasks(): List<DefaultTaskDto>
     suspend fun getTasksForDateSync(date: Long): List<Task>
     fun getTasksBetweenDates(startDate: Long, endDate: Long): Flow<List<Task>>
+    suspend fun deleteAllTasks()
 
     suspend fun getUserPreferences(userId: String): UserPreferences?
     suspend fun updateUserPremiumStatus(userId: String, isPremium: Boolean)

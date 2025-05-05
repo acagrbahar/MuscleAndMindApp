@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -15,6 +16,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.acagribahar.muscleandmindapp.MainActivity // Uygulamayı açacak Intent için
 import com.acagribahar.muscleandmindapp.R // İkon için R importu
+import com.acagribahar.muscleandmindapp.data.local.SettingsManager
 
 class ReminderWorker(
     private val context: Context,
@@ -24,12 +26,26 @@ class ReminderWorker(
     companion object {
         const val CHANNEL_ID = "MindMuscleReminderChannel"
         const val NOTIFICATION_ID = 1
+        private const val TAG = "ReminderWorker" // <<< Loglama için TAG
+
     }
 
     override suspend fun doWork(): Result {
         // Burada normalde kullanıcının o günkü görevlerini yapıp yapmadığı kontrol edilebilir.
-        // Şimdilik basit bir hatırlatma bildirimi gönderelim.
-        println("ReminderWorker çalışıyor...") // Loglama
+        Log.d(TAG, "doWork called.") // <<< Loglama
+        // <<< SettingsManager ile bildirim ayarını kontrol et >>>
+        val settingsManager = SettingsManager(context)
+        val notificationsEnabled = settingsManager.getNotificationsEnabled()
+
+        if (!notificationsEnabled) {
+            // <<< Eğer bildirimler kapalıysa, işi yapma ve başarılı olarak bitir >>>
+            Log.d(TAG, "Notifications are disabled by user. Skipping notification.")
+            return Result.success() // Bildirim gönderme ama iş başarılı sayılır
+        }
+
+        // <<< Bildirimler açıksa devam et >>>
+        Log.d(TAG, "Notifications enabled, proceeding to show notification.")
+
         showNotification("Mind & Muscle", "Bugünkü görevlerini tamamlamayı unutma!")
         return Result.success()
     }
@@ -61,16 +77,14 @@ class ReminderWorker(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 // Android 13+ için izin kontrolü
                 if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                    // İzin yoksa bildirim gösterilemez.
-                    // Burada kullanıcıya izin istemesi için bir mekanizma kurulabilir
-                    // veya sadece loglama yapılıp geçilebilir.
-                    println("Bildirim izni verilmemiş!")
+                    Log.w(TAG, "Notification permission not granted.") // <<< Loglama
+
                     return // Bildirimi gösterme
                 }
             }
             // İzin varsa veya eski sürümse bildirimi göster
             notify(NOTIFICATION_ID, builder.build())
-            println("Bildirim gönderildi.") // Loglama
+            Log.d(TAG,"Bildirim gönderildi.") // Loglama
         }
     }
 
@@ -87,7 +101,7 @@ class ReminderWorker(
             val notificationManager: NotificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
-            println("Bildirim kanalı oluşturuldu.") // Loglama
+            Log.d(TAG, "Notification channel ensured.") // <<< Loglama
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.acagribahar.muscleandmindapp.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi // stickyHeader için
 import androidx.compose.foundation.background // Header arkaplanı için
 import androidx.compose.foundation.layout.*
@@ -17,6 +18,8 @@ import com.acagribahar.muscleandmindapp.ui.screens.exercises.ExercisesViewModel 
 import androidx.compose.foundation.clickable // clickable import
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import com.acagribahar.muscleandmindapp.ui.screens.exercises.DisplayExercise
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -29,6 +32,14 @@ fun ExercisesScreen(
 ) {
     // ViewModel'dan gruplanmış egzersizleri State olarak al
     val groupedExercises by exercisesViewModel.groupedExercises.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    // <<< YENİ: Ekran açıldığında reklamı yükle >>>
+    LaunchedEffect(key1 = Unit) { // key1 = Unit: Sadece ekrana ilk girişte çalışır
+        Log.d("ExercisesScreen", "Launching effect to load interstitial ad.")
+        exercisesViewModel.loadInterstitialAd(context)
+    }
+
 
 
     Scaffold(
@@ -39,7 +50,7 @@ fun ExercisesScreen(
         }
     ) { paddingValues ->
 
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp, vertical = 16.dp)) {
             Text(
                 "Tüm Egzersizler",
                 style = MaterialTheme.typography.headlineMedium,

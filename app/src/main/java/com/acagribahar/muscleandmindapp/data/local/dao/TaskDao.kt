@@ -52,4 +52,8 @@ interface TaskDao {
 
     @Query("SELECT * FROM tasks WHERE date BETWEEN :startDate AND :endDate ORDER BY date ASC")
     fun getTasksBetweenDates(startDate: Long, endDate: Long): Flow<List<Task>>
+
+    // <<< YENİ FONKSİYON: Tüm görevleri sil >>>
+    @Query("DELETE FROM tasks")
+    suspend fun deleteAllTasks()
 }
