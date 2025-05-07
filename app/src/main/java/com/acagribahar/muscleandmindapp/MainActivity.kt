@@ -22,6 +22,7 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
+import com.acagribahar.muscleandmindapp.biling.BillingClientWrapper
 // --- AdMob Importları ---
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdListener
@@ -80,13 +81,18 @@ class MainActivity : ComponentActivity() {
     private lateinit var addExerciseViewModelFactory: AddExerciseViewModelFactory
     private lateinit var firebaseAuth: FirebaseAuth
 
+    private lateinit var billingClientWrapper: BillingClientWrapper
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         firebaseAuth = FirebaseAuth.getInstance()
         val database = AppDatabase.getDatabase(applicationContext)
         taskRepository = TaskRepositoryImpl(database.taskDao(), applicationContext)
 
-        // --- Factory ve ViewModel başlatmaları (Sizin kodunuzdaki gibi) ---
+        // <<< BillingClientWrapper'ı başlat >>>
+        billingClientWrapper = BillingClientWrapper(applicationContext)
+
+        // --- Factory ve ViewModel başlatmaları
         homeViewModelFactory = HomeViewModelFactory(taskRepository, firebaseAuth)
         homeViewModel = ViewModelProvider(this, homeViewModelFactory)[HomeViewModel::class.java]
         exercisesViewModelFactory = ExercisesViewModelFactory(taskRepository, firebaseAuth)
@@ -95,11 +101,11 @@ class MainActivity : ComponentActivity() {
         mindTasksViewModel = ViewModelProvider(this, mindTasksViewModelFactory)[MindTasksViewModel::class.java]
         progressViewModelFactory = ProgressViewModelFactory(taskRepository, firebaseAuth)
         progressViewModel = ViewModelProvider(this, progressViewModelFactory)[ProgressViewModel::class.java]
-        settingsViewModelFactory = SettingsViewModelFactory(taskRepository, firebaseAuth, application)
+        settingsViewModelFactory = SettingsViewModelFactory(taskRepository, firebaseAuth, application,billingClientWrapper)
         settingsViewModel = ViewModelProvider(this, settingsViewModelFactory)[SettingsViewModel::class.java]
         addExerciseViewModelFactory = AddExerciseViewModelFactory(taskRepository, firebaseAuth)
         addExerciseViewModel = ViewModelProvider(this, addExerciseViewModelFactory)[AddExerciseViewModel::class.java]
-        // --- ---
+
 
         setContent {
             val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
@@ -185,6 +191,14 @@ class MainActivity : ComponentActivity() {
             } // MindMuscleAppTheme Sonu
         } // setContent Sonu
     } // onCreate Sonu
+
+    // <<< Activity yok edilirken Billing bağlantısını kes >>>
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d("MainActivity", "onDestroy called, ending billing connection.")
+        billingClientWrapper.endConnection()
+    }
+    // <<< --- >>>
 } // MainActivity Sonu
 
 

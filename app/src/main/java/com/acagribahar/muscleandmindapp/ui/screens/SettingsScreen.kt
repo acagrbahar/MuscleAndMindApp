@@ -1,6 +1,7 @@
 package com.acagribahar.muscleandmindapp.ui.screens
 
 import android.Manifest
+import android.app.Activity
 import android.app.TimePickerDialog
 import android.content.pm.PackageManager
 import android.os.Build
@@ -146,10 +147,19 @@ fun SettingsScreen(
 
             // --- Hesap Bölümü ---
             SettingsSectionCard(title = "Hesap") {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.padding(vertical = 16.dp).align(Alignment.CenterHorizontally))
+                if (uiState.isLoading || uiState.isLoadingBilling) {
+                    Row( // <<< Ortalamak için Row içine alalım >>>
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ){
+                        CircularProgressIndicator()
+                    }
                 } else if (uiState.errorMessage != null) {
                     Text("Hata: ${uiState.errorMessage}", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 16.dp))
+                } else if (uiState.billingError != null) { // Billing hatası
+                    Text("Hata: ${uiState.billingError}", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical=16.dp))
+                    // <<< Hatayı temizleme butonu (opsiyonel) >>>
+                    // Button(onClick = { settingsViewModel.clearBillingError() }) { Text("Tekrar Dene") }
                 } else {
                     SettingItemRow(title = "Hesap Durumu") {
                         Text(
@@ -159,15 +169,54 @@ fun SettingsScreen(
                         )
                     }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+
+                    // Premium Butonu/Mesajı
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
                         if (!uiState.isPremium) {
-                            Button(onClick = { Toast.makeText(context, "Premium'a geçiş yakında!", Toast.LENGTH_SHORT).show() }, modifier = Modifier.padding(top = 8.dp)) {
-                                Text("Premium'a Geç")
-                            }
+                            // <<< Buton ve Fiyatı Column içine alalım >>>
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(top = 8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        // <<< Satın alma akışını başlat >>>
+                                        val activity = context as? Activity
+                                        if (activity != null) {
+                                            settingsViewModel.launchBillingFlow(activity)
+                                        } else {
+                                            Log.e("SettingsScreen", "Activity context is null, cannot launch billing flow.")
+                                            Toast.makeText(context, "Satın alma başlatılamadı.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    // <<< Ürün detayı yoksa butonu pasif yap >>>
+                                    enabled = uiState.premiumProductDetails != null
+                                ) {
+                                    Text("Premium'a Geç")
+                                }
+
+                                // <<< Fiyatı göster (varsa) >>>
+                                uiState.premiumPrice?.let { price ->
+                                    Text(
+                                        text = "$price / Ay", // Örn: ₺19,99 / Ay
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                    // Ürün detayı yüklenemezse veya fiyat yoksa bilgi verilebilir
+                                } ?: Text(
+                                    text = "Fiyat bilgisi yüklenemedi.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            } // Column sonu
                         } else {
                             Text("Tüm premium özellikler aktif!", modifier = Modifier.padding(vertical = 8.dp))
+                            // Aboneliği yönetme butonu buraya eklenebilir
                         }
-                    }
+                    } // Row sonu
                 }
             }
 
