@@ -21,6 +21,7 @@ lifecycleViewmodelCompose = "2.8.7"
 navigationCompose = "2.8.9"
 playServicesAds = "24.2.0"
 roomRuntime = "2.7.1"
+userMessagingPlatform = "3.2.0"
 workRuntimeKtx = "2.10.1"
 # KSP versiyonu proje seviyesinde belirtiliyor, burada olmasına gerek yok (varsa kaldırılabilir)
 
@@ -69,6 +70,7 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutinesAndroid" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" } # Versiyon 1.6.3'e ayarlandı
 play-services-ads = { module = "com.google.android.gms:play-services-ads", version.ref = "playServicesAds" }
+user-messaging-platform = { module = "com.google.android.ump:user-messaging-platform", version.ref = "userMessagingPlatform" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

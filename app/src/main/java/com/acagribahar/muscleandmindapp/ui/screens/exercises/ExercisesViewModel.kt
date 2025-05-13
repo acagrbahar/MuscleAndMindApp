@@ -39,7 +39,9 @@ class ExercisesViewModel(
     companion object {
         private const val TAG = "ExercisesViewModel"
         // <<< Geçiş Reklamı Test Birimi Kimliği >>>
-        private const val INTERSTITIAL_TEST_AD_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"
+        //private const val INTERSTITIAL_TEST_AD_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"
+        private const val INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-1292674096792479/9324300564"
+
         // <<< Gerçek ID'nizi buraya ekleyin (Yayınlamadan önce) >>>
         // private const val INTERSTITIAL_PROD_AD_UNIT_ID = "ca-app-pub-1292674096792479/9324300564"
     }
@@ -113,14 +115,17 @@ class ExercisesViewModel(
     // <<< YENİ: Geçiş reklamını yükleyen fonksiyon >>>
     fun loadInterstitialAd(context: Context) {
         // Zaten yüklü bir reklam varsa veya yükleniyorsa tekrar yükleme (opsiyonel)
-        // if (_interstitialAd.value != null) return
+        if (_interstitialAd.value != null){
+            Log.d(TAG, "Interstitial Ad already loaded or is loading.")
+            return
+        }
 
-        Log.d(TAG, "Attempting to load Interstitial Ad...")
+        Log.d(TAG, "Attempting to load Interstitial Ad with ID: $INTERSTITIAL_AD_UNIT_ID") // <<< GERÇEK ID KULLANILIYOR OLMALI
         val adRequest = AdRequest.Builder().build()
-        InterstitialAd.load(context, INTERSTITIAL_TEST_AD_UNIT_ID, adRequest, // <<< TEST ID'si KULLAN
+        InterstitialAd.load(context, INTERSTITIAL_AD_UNIT_ID, adRequest, // <<< TEST ID'si KULLAN
             object : InterstitialAdLoadCallback() {
                 override fun onAdFailedToLoad(adError: LoadAdError) {
-                    Log.e(TAG, "Interstitial Ad failed to load: ${adError.message} (Code: ${adError.code})")
+                    Log.e(TAG, "Interstitial Ad FAILED to load. Code: ${adError.code}, Message: ${adError.message}, Domain: ${adError.domain}, Cause: ${adError.cause}")
                     _interstitialAd.value = null // Hata durumunda null yap
                 }
 

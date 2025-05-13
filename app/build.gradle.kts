@@ -18,8 +18,8 @@ android {
         applicationId = "com.acagribahar.muscleandmindapp"
         minSdk = 24
         targetSdk = 35 // compileSdk ile aynı olması önerilir
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -107,6 +107,9 @@ dependencies {
 
     implementation(libs.firebase.crashlytics.ktx)
     implementation(libs.billing.ktx)
+
+    implementation(libs.user.messaging.platform)
+
 
 
 }

@@ -18,8 +18,6 @@ class MindMuscleApplication : Application() {
         super.onCreate()
         settingsManager = SettingsManager(this)
 
-        // <<< Mobile Ads SDK'sını başlat >>>
-        MobileAds.initialize(this) {}
         Log.d("MindMuscleApp", "Mobile Ads SDK Initialized.")
 
         // Uygulama ilk açıldığında periyodik bildirim işini planla

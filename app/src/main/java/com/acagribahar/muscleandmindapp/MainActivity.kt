@@ -1,6 +1,6 @@
 package com.acagribahar.muscleandmindapp
 
-// --- Gerekli Importlar (Temizlenmiş ve Gerekli Olanlar) ---
+// --- Gerekli Importlar ---
 import android.app.Activity
 import android.os.Bundle
 import android.util.Log
@@ -23,7 +23,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import com.acagribahar.muscleandmindapp.biling.BillingClientWrapper
-// --- AdMob Importları ---
+// --- AdMob ve UMP Importları ---
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdRequest
@@ -31,18 +31,20 @@ import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.MobileAds // MobileAds SDK başlatma için
 import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.ump.* // UMP SDK için tüm importlar
+import java.util.concurrent.atomic.AtomicBoolean // SDK'nın bir kez başlatılması için
 // --- Veri ve Repository Importları ---
 import com.acagribahar.muscleandmindapp.data.local.AppDatabase
 import com.acagribahar.muscleandmindapp.data.repository.TaskRepositoryImpl
+// --- Navigasyon Sabitleri Importları (Doğrudan) ---
 import com.acagribahar.muscleandmindapp.navigation.Screen
 import com.acagribahar.muscleandmindapp.navigation.Screen.AddExerciseDestinations
 import com.acagribahar.muscleandmindapp.navigation.Screen.AuthScreen
 import com.acagribahar.muscleandmindapp.navigation.Screen.ExerciseDestinations
 import com.acagribahar.muscleandmindapp.navigation.Screen.Graph
 import com.acagribahar.muscleandmindapp.navigation.Screen.MindTaskDestinations
-// --- Navigasyon Sabitleri Importları (Doğrudan) ---
-
 // --- Ekranlar ve ViewModel Importları ---
 import com.acagribahar.muscleandmindapp.ui.screens.ExercisesScreen
 import com.acagribahar.muscleandmindapp.ui.screens.HomeScreen
@@ -65,7 +67,6 @@ import java.net.URLEncoder
 
 class MainActivity : ComponentActivity() {
 
-    // --- Değişken tanımları ---
     private lateinit var taskRepository: TaskRepositoryImpl
     private lateinit var exercisesViewModel: ExercisesViewModel
     private lateinit var homeViewModel: HomeViewModel
@@ -80,19 +81,68 @@ class MainActivity : ComponentActivity() {
     private lateinit var settingsViewModelFactory: SettingsViewModelFactory
     private lateinit var addExerciseViewModelFactory: AddExerciseViewModelFactory
     private lateinit var firebaseAuth: FirebaseAuth
-
     private lateinit var billingClientWrapper: BillingClientWrapper
+
+    // UMP SDK için değişkenler
+    private lateinit var consentInformation: ConsentInformation
+    private val isMobileAdsInitializeCalled = AtomicBoolean(false)
+    private val mainActivityTag = "MainActivityUMPConsent"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // UMP SDK Kurulumu ve İzin Formu Mantığı
+        // Test parametreleri (geliştirme için)
+        // TODO: YAYINLAMADAN ÖNCE DEBUG AYARLARINI KALDIRIN VEYA YORUM SATIRI YAPIN!
+        val debugSettings = ConsentDebugSettings.Builder(this)
+            .setDebugGeography(ConsentDebugSettings.DebugGeography.DEBUG_GEOGRAPHY_EEA) // Testi EEA bölgesindeymiş gibi yap
+            .addTestDeviceHashedId("B3EEABB8EE11C2BE770B684D95219ECB") // <<< Logcat'ten alıp buraya yapıştırın
+            .build()
+
+
+
+
+        val params = ConsentRequestParameters.Builder()
+            //.setConsentDebugSettings(debugSettings) // <<< Test için bu satırı aktif edin
+            .build()
+
+        consentInformation = UserMessagingPlatform.getConsentInformation(this)
+        consentInformation.requestConsentInfoUpdate(
+            this,
+            params,
+            {
+                Log.d(mainActivityTag, "Consent info update success. Can request ads: ${consentInformation.canRequestAds()}")
+                // Gerekirse ve mevcutsa formu yükle ve göster
+                if (consentInformation.isConsentFormAvailable) {
+                    UserMessagingPlatform.loadAndShowConsentFormIfRequired(this) { loadAndShowError ->
+                        if (loadAndShowError != null) {
+                            Log.e(mainActivityTag, "Error loading or showing consent form: ${loadAndShowError.message}")
+                        } else {
+                            Log.d(mainActivityTag, "Consent form shown and dismissed (or not needed at this specific call).")
+                        }
+                        // Form gösterildikten sonra (veya gerekmiyorsa) reklamları başlat.
+                        initializeMobileAdsSdk()
+                    }
+                } else {
+                    Log.d(mainActivityTag, "Consent form not available. Initializing ads.")
+                    initializeMobileAdsSdk() // Form mevcut değilse direkt reklamları başlat
+                }
+            },
+            { requestConsentError ->
+                Log.e(mainActivityTag, "Consent info update failed: ${requestConsentError.message}")
+                initializeMobileAdsSdk() // Hata durumunda da reklamları başlatmayı dene
+            }
+        )
+
+
+
+
+        // Diğer başlatmalar (Firebase, DB, Repository, ViewModel'lar)
         firebaseAuth = FirebaseAuth.getInstance()
         val database = AppDatabase.getDatabase(applicationContext)
         taskRepository = TaskRepositoryImpl(database.taskDao(), applicationContext)
-
-        // <<< BillingClientWrapper'ı başlat >>>
         billingClientWrapper = BillingClientWrapper(applicationContext)
 
-        // --- Factory ve ViewModel başlatmaları
         homeViewModelFactory = HomeViewModelFactory(taskRepository, firebaseAuth)
         homeViewModel = ViewModelProvider(this, homeViewModelFactory)[HomeViewModel::class.java]
         exercisesViewModelFactory = ExercisesViewModelFactory(taskRepository, firebaseAuth)
@@ -101,11 +151,10 @@ class MainActivity : ComponentActivity() {
         mindTasksViewModel = ViewModelProvider(this, mindTasksViewModelFactory)[MindTasksViewModel::class.java]
         progressViewModelFactory = ProgressViewModelFactory(taskRepository, firebaseAuth)
         progressViewModel = ViewModelProvider(this, progressViewModelFactory)[ProgressViewModel::class.java]
-        settingsViewModelFactory = SettingsViewModelFactory(taskRepository, firebaseAuth, application,billingClientWrapper)
+        settingsViewModelFactory = SettingsViewModelFactory(taskRepository, firebaseAuth, application, billingClientWrapper)
         settingsViewModel = ViewModelProvider(this, settingsViewModelFactory)[SettingsViewModel::class.java]
         addExerciseViewModelFactory = AddExerciseViewModelFactory(taskRepository, firebaseAuth)
         addExerciseViewModel = ViewModelProvider(this, addExerciseViewModelFactory)[AddExerciseViewModel::class.java]
-
 
         setContent {
             val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
@@ -114,51 +163,29 @@ class MainActivity : ComponentActivity() {
             MindMuscleAppTheme(themePreference = settingsState.currentTheme) {
                 val navController = rememberNavController()
                 val currentUser = firebaseAuth.currentUser
-
-                // <<< Başlangıç Hedefi (Düzleştirilmiş Yapıya Göre) >>>
                 val startDestination = if (currentUser != null) Graph.MAIN else AuthScreen.LOGIN
 
-                // #############################################################
-                // ### ÜST SEVİYE NavHost (DÜZELTİLMİŞ - Flattened Auth) ###
-                // #############################################################
                 NavHost(
                     navController = navController,
                     startDestination = startDestination,
                     route = Graph.ROOT
                 ) {
-                    // --- Auth Ekranları (Doğrudan NavHost altında) ---
+                    // --- Auth Ekranları ---
                     composable(AuthScreen.LOGIN) {
                         LoginScreen(
-                            onLoginSuccess = {
-                                navController.navigate(Graph.MAIN) {
-                                    popUpTo(Graph.ROOT) { inclusive = true } // Kök'e kadar temizle
-                                }
-                            },
-                            navigateToRegister = {
-                                navController.navigate(AuthScreen.REGISTER)
-                            }
+                            onLoginSuccess = { navController.navigate(Graph.MAIN) { popUpTo(Graph.ROOT) { inclusive = true } } },
+                            navigateToRegister = { navController.navigate(AuthScreen.REGISTER) }
                         )
                     }
                     composable(AuthScreen.REGISTER) {
                         RegisterScreen(
-                            onRegisterSuccess = {
-                                navController.navigate(Graph.MAIN) {
-                                    popUpTo(Graph.ROOT) { inclusive = true } // Kök'e kadar temizle
-                                }
-                            },
-                            navigateToLogin = {
-                                navController.navigate(AuthScreen.LOGIN) {
-                                    popUpTo(AuthScreen.LOGIN) { inclusive = true } // Login'e kadar temizle
-                                }
-                            }
+                            onRegisterSuccess = { navController.navigate(Graph.MAIN) { popUpTo(Graph.ROOT) { inclusive = true } } },
+                            navigateToLogin = { navController.navigate(AuthScreen.LOGIN) { popUpTo(AuthScreen.LOGIN) { inclusive = true } } }
                         )
                     }
-                    // <<< navigation(Graph.AUTHENTICATION) bloğu SİLİNDİ >>>
-
                     // --- Ana Uygulama Grafiği ---
                     composable(Graph.MAIN) {
                         MainAppScreen(
-                            // navController parametresi artık geçilmiyor
                             homeViewModel = homeViewModel,
                             exercisesViewModel = exercisesViewModel,
                             mindTasksViewModel = mindTasksViewModel,
@@ -169,46 +196,50 @@ class MainActivity : ComponentActivity() {
                             onLogout = {
                                 scope.launch {
                                     try {
-                                        Log.d("Logout", "Clearing local tasks...")
                                         homeViewModel.clearAllLocalTasks()
-                                        Log.d("Logout", "Local tasks cleared. Signing out...")
                                         firebaseAuth.signOut()
-                                        // <<< Login ekranına git ve köke kadar temizle >>>
-                                        navController.navigate(AuthScreen.LOGIN) { // <<< Hedef güncellendi
+                                        navController.navigate(AuthScreen.LOGIN) {
                                             popUpTo(Graph.ROOT) { inclusive = true }
                                             launchSingleTop = true
                                         }
-                                        Log.d("Logout", "Navigation triggered.")
-                                    } catch (e: Exception) {
-                                        Log.e("Logout", "Error during logout process", e)
-                                    }
+                                    } catch (e: Exception) { Log.e("Logout", "Error during logout process", e) }
                                 }
                             }
                         )
-                    } // --- Ana Uygulama Grafiği Sonu ---
+                    }
+                }
+            }
+        }
+    }
 
-                } // --- ÜST SEVİYE NavHost Sonu ---
-            } // MindMuscleAppTheme Sonu
-        } // setContent Sonu
-    } // onCreate Sonu
+    // Mobile Ads SDK'sını başlatan fonksiyon
+    private fun initializeMobileAdsSdk() {
+        if (isMobileAdsInitializeCalled.getAndSet(true)) {
+            return // Sadece bir kere çağrıldığından emin ol
+        }
+        Log.d(mainActivityTag, "Attempting to initialize Mobile Ads SDK...")
+        MobileAds.initialize(this) { initializationStatus ->
+            val statusMap = initializationStatus.adapterStatusMap
+            for (adapterClass in statusMap.keys) {
+                val status = statusMap[adapterClass]
+                Log.d(mainActivityTag, "Adapter class: $adapterClass, state: ${status?.initializationState}, description: ${status?.description}")
+            }
+            Log.d(mainActivityTag, "Mobile Ads SDK initialized completely after UMP flow.")
+        }
+    }
 
-    // <<< Activity yok edilirken Billing bağlantısını kes >>>
     override fun onDestroy() {
         super.onDestroy()
         Log.d("MainActivity", "onDestroy called, ending billing connection.")
         billingClientWrapper.endConnection()
     }
-    // <<< --- >>>
-} // MainActivity Sonu
+}
 
 
-// #############################################################
-// ### MainAppScreen Composable (Sizin Gönderdiğiniz Koddaki Haliyle) ###
-// #############################################################
+// --- MainAppScreen Composable (İç Navigasyonu içerir - Sizin gönderdiğiniz gibi) ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppScreen(
-    // navController: NavHostController, // <<< KALDIRILMIŞTI (Doğru)
     homeViewModel: HomeViewModel,
     exercisesViewModel: ExercisesViewModel,
     mindTasksViewModel: MindTasksViewModel,
@@ -219,11 +250,11 @@ fun MainAppScreen(
     onLogout: () -> Unit
 ) {
     val mainNavController = rememberNavController()
-    val context = LocalContext.current
+    val context = LocalContext.current // showInterstitialAdThenNavigate içinde kullanılacak
     val isPremium by exercisesViewModel.isPremium.collectAsStateWithLifecycle()
     val loadedInterstitialAd by exercisesViewModel.interstitialAd.collectAsStateWithLifecycle()
 
-    // Reklamı gösterip sonra navigate eden yardımcı fonksiyon (Değişiklik yok)
+    // Reklamı gösterip sonra navigate eden yardımcı fonksiyon
     fun showInterstitialAdThenNavigate(destinationRoute: String, activity: Activity?, adToShow: InterstitialAd?) {
         if (!isPremium && adToShow != null && activity != null) {
             Log.d("AdMob", "Attempting to show Interstitial Ad before navigating to $destinationRoute")
@@ -270,15 +301,12 @@ fun MainAppScreen(
         }
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            // --- İÇ NavHost (Sizin Kodunuzdaki Haliyle) ---
             NavHost(
                 navController = mainNavController,
                 startDestination = Screen.Home.route,
                 modifier = Modifier.weight(1f)
             ) {
-                composable(Screen.Home.route) {
-                    HomeScreen(homeViewModel = homeViewModel)
-                }
+                composable(Screen.Home.route) { HomeScreen(homeViewModel = homeViewModel) }
                 composable(Screen.Exercises.route) {
                     ExercisesScreen(
                         exercisesViewModel = exercisesViewModel,
@@ -312,32 +340,30 @@ fun MainAppScreen(
                         MindTaskDetailScreen(taskTitle, mindTasksViewModel, mainNavController)
                     } else { mainNavController.popBackStack() }
                 }
-                composable(Screen.Progress.route) {
-                    ProgressScreen(progressViewModel = progressViewModel)
-                }
-                composable(AddExerciseDestinations.ROUTE) {
-                    AddExerciseScreen(mainNavController, addExerciseViewModel)
-                }
+                composable(Screen.Progress.route) { ProgressScreen(progressViewModel = progressViewModel) }
+                composable(AddExerciseDestinations.ROUTE) { AddExerciseScreen(mainNavController, addExerciseViewModel) }
                 composable(Screen.Settings.route) {
                     SettingsScreen(settingsViewModel = settingsViewModel, onLogout = onLogout)
                 }
-            } // --- İç NavHost Sonu ---
+            } // İç NavHost Sonu
 
-            // Banner Reklam (Sizin Kodunuzdaki Haliyle)
-            if (!settingsUiState.isPremium && !settingsUiState.isLoading) {
+            // Banner Reklam
+            if (!settingsUiState.isPremium && !settingsUiState.isLoading) { // isLoadingBilling yerine isLoading (SettingsUiState'den)
                 AndroidView(
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     factory = { ctx ->
                         AdView(ctx).apply {
-                            adUnitId = "ca-app-pub-3940256099942544/6300978111"
-                            //Gercek id : ca-app-pub-1292674096792479/2220600505 yayinlanmadan önce degistir.
+                            adUnitId = "ca-app-pub-1292674096792479/2220600505" // GERÇEK BANNER ID'NİZ
                             setAdSize(AdSize.BANNER)
-                            adListener = object : AdListener() { /* ... */ }
+                            adListener = object : AdListener() {
+                                override fun onAdLoaded() { Log.d("AdMob", "Banner Ad loaded successfully.") }
+                                override fun onAdFailedToLoad(loadAdError: LoadAdError) { Log.e("AdMob", "Banner Ad failed: ${loadAdError.message}") }
+                            }
                             loadAd(AdRequest.Builder().build())
                         }
                     }
                 )
-            } // Reklam Sonu
+            }
         } // Column Sonu
     } // Scaffold Sonu
 } // MainAppScreen Sonu

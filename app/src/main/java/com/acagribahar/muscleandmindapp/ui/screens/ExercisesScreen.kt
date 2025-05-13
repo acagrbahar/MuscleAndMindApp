@@ -36,7 +36,7 @@ fun ExercisesScreen(
 
     // <<< YENİ: Ekran açıldığında reklamı yükle >>>
     LaunchedEffect(key1 = Unit) { // key1 = Unit: Sadece ekrana ilk girişte çalışır
-        Log.d("ExercisesScreen", "Launching effect to load interstitial ad.")
+        Log.d("ExercisesScreen", "LaunchedEffect: Calling loadInterstitialAd.")
         exercisesViewModel.loadInterstitialAd(context)
     }
 
